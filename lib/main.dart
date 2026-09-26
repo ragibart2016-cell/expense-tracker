@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:intl/intl.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await MobileAds.instance.initialize();
   runApp(const ExpenseTrackerApp());
 }
 
@@ -70,6 +71,8 @@ class ExpenseHomePage extends StatefulWidget {
 class _ExpenseHomePageState extends State<ExpenseHomePage> {
   List<ExpenseItem> _expenses = [];
   bool _isLoading = true;
+  BannerAd? _bannerAd;
+  bool _isBannerAdLoaded = false;
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
@@ -89,6 +92,32 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
   void initState() {
     super.initState();
     _loadExpenses();
+    _initBannerAd();
+  }
+
+  void _initBannerAd() {
+    _bannerAd = BannerAd(
+      adUnitId: 'ca-app-pub-3940256099942544/6300978111',
+      size: AdSize.banner,
+      request: const AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (ad) {
+          setState(() {
+            _isBannerAdLoaded = true;
+          });
+        },
+        onAdFailedToLoad: (ad, error) {
+          ad.dispose();
+        },
+      ),
+    );
+    _bannerAd?.load();
+  }
+
+  @override
+  void dispose() {
+    _bannerAd?.dispose();
+    super.dispose();
   }
 
   Future<void> _loadExpenses() async {
@@ -239,13 +268,23 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
                           },
                         ),
                 ),
+                if (_isBannerAdLoaded && _bannerAd != null)
+                  Container(
+                    alignment: Alignment.center,
+                    width: _bannerAd!.size.width.toDouble(),
+                    height: _bannerAd!.size.height.toDouble(),
+                    child: AdWidget(ad: _bannerAd!),
+                  ),
               ],
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _openAddModal,
-        backgroundColor: const Color(0xFF0F766E),
-        foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: _isBannerAdLoaded ? 50.0 : 0.0),
+        child: FloatingActionButton(
+          onPressed: _openAddModal,
+          backgroundColor: const Color(0xFF0F766E),
+          foregroundColor: Colors.white,
+          child: const Icon(Icons.add),
+        ),
       ),
     );
   }
