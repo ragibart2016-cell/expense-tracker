@@ -27,16 +27,16 @@ jobs:
       - name: Configure AdMob App ID
         run: |
           python3 -c '
-          import os
+          import xml.etree.ElementTree as ET
           path = "android/app/src/main/AndroidManifest.xml"
-          if os.path.exists(path):
-              with open(path, "r") as f:
-                  content = f.read()
-              ad_tag = "\n        <meta-data android:name=\"com.google.android.gms.ads.APPLICATION_ID\" android:value=\"ca-app-pub-3940256099942544~3347511713\"/>\n"
-              if "<application" in content:
-                  content = content.replace("<application", "<application" + ad_tag, 1)
-                  with open(path, "w") as f:
-                      f.write(content)
+          ET.register_namespace("android", "http://schemas.android.com/apk/res/android")
+          tree = ET.parse(path)
+          root = tree.getroot()
+          app = root.find("application")
+          meta = ET.SubElement(app, "meta-data")
+          meta.set("{http://schemas.android.com/apk/res/android}name", "com.google.android.gms.ads.APPLICATION_ID")
+          meta.set("{http://schemas.android.com/apk/res/android}value", "ca-app-pub-3940256099942544~3347511713")
+          tree.write(path, encoding="utf-8", xml_declaration=True)
           '
 
       - name: Install dependencies
