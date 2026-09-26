@@ -24,7 +24,7 @@ jobs:
       - name: Create Android Structure
         run: flutter create . --project-name expense_tracker --platforms=android
 
-      - name: Configure AdMob App ID
+      - name: Configure AdMob App ID & Kotlin
         run: |
           python3 -c '
           import xml.etree.ElementTree as ET
@@ -38,6 +38,9 @@ jobs:
           meta.set("{http://schemas.android.com/apk/res/android}value", "ca-app-pub-3940256099942544~3347511713")
           tree.write(path, encoding="utf-8", xml_declaration=True)
           '
+          # Upgrade Kotlin version to 1.9.22
+          sed -i -E "s/ext\.kotlin_version = .*/ext.kotlin_version = '1.9.22'/" android/build.gradle
+          sed -i -E "s/org\.jetbrains\.kotlin:kotlin-gradle-plugin:[0-9\.]+/org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22/" android/build.gradle
 
       - name: Install dependencies
         run: flutter pub get
