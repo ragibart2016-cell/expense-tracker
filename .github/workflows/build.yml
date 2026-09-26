@@ -22,7 +22,7 @@ jobs:
           flutter-version: '3.22.2'
 
       - name: Create Android Structure
-        run: flutter create . --platforms=android
+        run: flutter create . --project-name expense_tracker --platforms=android
 
       - name: Configure AdMob App ID
         run: |
