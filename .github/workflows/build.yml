@@ -24,6 +24,10 @@ jobs:
       - name: Create Android Structure
         run: flutter create . --platforms=android
 
+      - name: Configure AdMob App ID
+        run: |
+          sed -i '/<application/a \        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"/>' android/app/src/main/AndroidManifest.xml
+
       - name: Install dependencies
         run: flutter pub get
 
