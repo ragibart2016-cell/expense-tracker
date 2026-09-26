@@ -24,7 +24,7 @@ jobs:
       - name: Create Android Structure
         run: flutter create . --platforms=android
 
-      - name: Configure AdMob App ID
+      - name: Configure AdMob App ID & Fix Gradle Compatibility
         run: |
           python3 -c '
           import xml.etree.ElementTree as ET
@@ -37,6 +37,26 @@ jobs:
           meta.set("{http://schemas.android.com/apk/res/android}name", "com.google.android.gms.ads.APPLICATION_ID")
           meta.set("{http://schemas.android.com/apk/res/android}value", "ca-app-pub-3940256099942544~3347511713")
           tree.write(path, encoding="utf-8", xml_declaration=True)
+          '
+          # Fix missing namespace and gradle 8 issues for older plugins
+          echo "android.useAndroidX=true" >> android/gradle.properties
+          echo "android.enableJetifier=true" >> android/gradle.properties
+          
+          # Inject subprojects fix into root build.gradle
+          python3 -c '
+          path = "android/build.gradle"
+          with open(path, "a") as f:
+              f.write("""
+          subprojects {
+              afterEvaluate { project ->
+                  if (project.hasProperty("android")) {
+                      if (project.android.namespace == null) {
+                          project.android.namespace = project.group
+                      }
+                  }
+              }
+          }
+          """)
           '
 
       - name: Install dependencies
