@@ -24,7 +24,7 @@ jobs:
       - name: Create Android Structure
         run: flutter create . --project-name expense_tracker --platforms=android
 
-      - name: Configure AdMob, MinSDK & Kotlin
+      - name: Patch AdMob, MinSDK and Kotlin Version
         run: |
           python3 -c '
           import xml.etree.ElementTree as ET
@@ -37,14 +37,24 @@ jobs:
           meta.set("{http://schemas.android.com/apk/res/android}name", "com.google.android.gms.ads.APPLICATION_ID")
           meta.set("{http://schemas.android.com/apk/res/android}value", "ca-app-pub-6588358418138815~1983722153")
           tree.write(path, encoding="utf-8", xml_declaration=True)
-          '
-          # Set minSdkVersion to 21
-          sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/' android/app/build.gradle
-          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/' android/app/build.gradle
 
-          # Update Kotlin version to 1.9.20
-          sed -i 's/ext.kotlin_version = .*/ext.kotlin_version = "1.9.20"/' android/build.gradle
-          sed -i 's/kotlin-gradle-plugin:.*"/kotlin-gradle-plugin:1.9.20"/' android/build.gradle
+          # Force Kotlin 1.9.20
+          with open("android/build.gradle", "r") as f:
+              content = f.read()
+          import re
+          content = re.sub(r"ext\.kotlin_version\s*=\s*[\x27\x22][^\x27\x22]+[\x27\x22]", "ext.kotlin_version = \x271.9.20\x27", content)
+          content = re.sub(r"kotlin-gradle-plugin:[0-9\.]+", "kotlin-gradle-plugin:1.9.20", content)
+          with open("android/build.gradle", "w") as f:
+              f.write(content)
+
+          # Force minSdkVersion 21
+          with open("android/app/build.gradle", "r") as f:
+              app_content = f.read()
+          app_content = app_content.replace("minSdkVersion flutter.minSdkVersion", "minSdkVersion 21")
+          app_content = app_content.replace("minSdkVersion = flutter.minSdkVersion", "minSdkVersion = 21")
+          with open("android/app/build.gradle", "w") as f:
+              f.write(app_content)
+          '
 
       - name: Install dependencies
         run: flutter pub get
