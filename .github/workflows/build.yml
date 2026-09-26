@@ -24,7 +24,7 @@ jobs:
       - name: Create Android Structure
         run: flutter create . --project-name expense_tracker --platforms=android
 
-      - name: Configure AdMob App ID
+      - name: Configure AdMob & minSdkVersion
         run: |
           python3 -c '
           import xml.etree.ElementTree as ET
@@ -38,6 +38,9 @@ jobs:
           meta.set("{http://schemas.android.com/apk/res/android}value", "ca-app-pub-6588358418138815~1983722153")
           tree.write(path, encoding="utf-8", xml_declaration=True)
           '
+          # Set minSdkVersion to 21 for google_mobile_ads
+          sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/' android/app/build.gradle
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/' android/app/build.gradle
 
       - name: Install dependencies
         run: flutter pub get
