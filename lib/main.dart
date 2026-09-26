@@ -1,6 +1,7 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
+import 'dart:convert';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 void main() async {
@@ -15,78 +16,33 @@ class ExpenseTrackerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
       title: 'Expense Tracker',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0F766E),
-          primary: const Color(0xFF0F766E),
-        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
       ),
-      home: const ExpenseHomePage(),
+      home: const ExpenseHomeScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
 
-class ExpenseItem {
-  final String id;
-  final String title;
-  final double amount;
-  final String category;
-  final DateTime date;
-
-  ExpenseItem({
-    required this.id,
-    required this.title,
-    required this.amount,
-    required this.category,
-    required this.date,
-  });
-
-  Map<String, dynamic> toMap() => {
-        'id': id,
-        'title': title,
-        'amount': amount,
-        'category': category,
-        'date': date.toIso8601String(),
-      };
-
-  factory ExpenseItem.fromMap(Map<String, dynamic> map) => ExpenseItem(
-        id: map['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
-        title: map['title'] ?? '',
-        amount: (map['amount'] as num).toDouble(),
-        category: map['category'] ?? 'Other',
-        date: DateTime.tryParse(map['date'] ?? '') ?? DateTime.now(),
-      );
-}
-
-class ExpenseHomePage extends StatefulWidget {
-  const ExpenseHomePage({super.key});
+class ExpenseHomeScreen extends StatefulWidget {
+  const ExpenseHomeScreen({super.key});
 
   @override
-  State<ExpenseHomePage> createState() => _ExpenseHomePageState();
+  State<ExpenseHomeScreen> createState() => _ExpenseHomeScreenState();
 }
 
-class _ExpenseHomePageState extends State<ExpenseHomePage> {
-  List<ExpenseItem> _expenses = [];
-  bool _isLoading = true;
+class _ExpenseHomeScreenState extends State<ExpenseHomeScreen> {
+  List<Map<String, dynamic>> _expenses = [];
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _amountController = TextEditingController();
   BannerAd? _bannerAd;
   bool _isBannerAdLoaded = false;
 
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _amountController = TextEditingController();
-  String _selectedCategory = 'Food (खाना)';
-  DateTime _selectedDate = DateTime.now();
-
-  final List<Map<String, dynamic>> _categories = [
-    {'name': 'Food (खाना)', 'icon': Icons.restaurant, 'color': Colors.orange},
-    {'name': 'Travel (किराया/पेट्रोल)', 'icon': Icons.directions_bus, 'color': Colors.blue},
-    {'name': 'Bills (बिल/रिचार्ज)', 'icon': Icons.receipt_long, 'color': Colors.purple},
-    {'name': 'Shopping (खरीदारी)', 'icon': Icons.shopping_bag, 'color': Colors.pink},
-    {'name': 'Health (दवा)', 'icon': Icons.medical_services, 'color': Colors.red},
-    {'name': 'Other (अन्य)', 'icon': Icons.more_horiz, 'color': Colors.teal},
-  ];
+  // आपकी असली Banner Ad Unit ID
+  final String _adUnitId = 'ca-app-pub-6588358418138815/8714606100';
 
   @override
   void initState() {
@@ -97,7 +53,7 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
 
   void _initBannerAd() {
     _bannerAd = BannerAd(
-      adUnitId: 'ca-app-pub-3940256099942544/6300978111',
+      adUnitId: _adUnitId,
       size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(
@@ -117,47 +73,41 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
   @override
   void dispose() {
     _bannerAd?.dispose();
+    _titleController.dispose();
+    _amountController.dispose();
     super.dispose();
   }
 
   Future<void> _loadExpenses() async {
     final prefs = await SharedPreferences.getInstance();
-    final String? rawData = prefs.getString('user_expenses');
-    if (rawData != null) {
-      try {
-        final List decoded = jsonDecode(rawData);
-        _expenses = decoded.map((e) => ExpenseItem.fromMap(e)).toList();
-        _expenses.sort((a, b) => b.date.compareTo(a.date));
-      } catch (e) {
-        debugPrint('Error: $e');
-      }
+    final String? expensesString = prefs.getString('expenses_data');
+    if (expensesString != null) {
+      setState(() {
+        _expenses = List<Map<String, dynamic>>.from(json.decode(expensesString));
+      });
     }
-    setState(() => _isLoading = false);
   }
 
   Future<void> _saveExpenses() async {
     final prefs = await SharedPreferences.getInstance();
-    final String encoded = jsonEncode(_expenses.map((e) => e.toMap()).toList());
-    await prefs.setString('user_expenses', encoded);
+    await prefs.setString('expenses_data', json.encode(_expenses));
   }
 
   void _addExpense() {
-    final title = _titleController.text.trim();
-    final amount = double.tryParse(_amountController.text.trim());
+    final String title = _titleController.text.trim();
+    final double? amount = double.tryParse(_amountController.text.trim());
 
     if (title.isEmpty || amount == null || amount <= 0) return;
 
-    final newExpense = ExpenseItem(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: title,
-      amount: amount,
-      category: _selectedCategory,
-      date: _selectedDate,
-    );
+    final newExpense = {
+      'id': DateTime.now().millisecondsSinceEpoch.toString(),
+      'title': title,
+      'amount': amount,
+      'date': DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.now()),
+    };
 
     setState(() {
       _expenses.insert(0, newExpense);
-      _expenses.sort((a, b) => b.date.compareTo(a.date));
     });
 
     _saveExpenses();
@@ -167,58 +117,67 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
   }
 
   void _deleteExpense(String id) {
-    setState(() => _expenses.removeWhere((item) => item.id == id));
+    setState(() {
+      _expenses.removeWhere((item) => item['id'] == id);
+    });
     _saveExpenses();
   }
 
-  double get _totalExpense => _expenses.fold(0.0, (sum, item) => sum + item.amount);
+  double get _totalExpenses {
+    return _expenses.fold(0.0, (sum, item) => sum + (item['amount'] as num).toDouble());
+  }
 
-  void _openAddModal() {
-    _titleController.clear();
-    _amountController.clear();
-    _selectedDate = DateTime.now();
-
+  void _showAddExpenseDialog() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-            top: 20,
-            left: 20,
-            right: 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('नया खर्च जोड़ें', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _titleController,
-                decoration: const InputDecoration(labelText: 'खर्च का नाम', border: OutlineInputBorder()),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+          top: 20,
+          left: 20,
+          right: 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'नया खर्चा जोड़ें',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _titleController,
+              decoration: const InputDecoration(
+                labelText: 'खर्चे का नाम (उदा. चाय, राशन)',
+                border: OutlineInputBorder(),
               ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _amountController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'राशि (₹)', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _amountController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'रकम (₹)',
+                border: OutlineInputBorder(),
               ),
-              const SizedBox(height: 10),
-              DropdownButtonFormField<String>(
-                value: _selectedCategory,
-                items: _categories.map((c) => DropdownMenuItem(value: c['name'] as String, child: Text(c['name']))).toList(),
-                onChanged: (val) => setModalState(() => _selectedCategory = val!),
-                decoration: const InputDecoration(border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _addExpense,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
               ),
-              const SizedBox(height: 15),
-              ElevatedButton(
-                onPressed: _addExpense,
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F766E), foregroundColor: Colors.white),
-                child: const Text('सेव करें'),
-              ),
-            ],
-          ),
+              child: const Text('सेव करें', style: TextStyle(fontSize: 16)),
+            ),
+          ],
         ),
       ),
     );
@@ -228,63 +187,114 @@ class _ExpenseHomePageState extends State<ExpenseHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Expense Tracker'),
-        backgroundColor: const Color(0xFF0F766E),
+        title: const Text('डेली खर्च ट्रैकर', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.teal,
         foregroundColor: Colors.white,
+        centerTitle: true,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.all(16),
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0F766E),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    children: [
-                      const Text('कुल खर्च', style: TextStyle(color: Colors.white70)),
-                      const SizedBox(height: 8),
-                      Text('₹${_totalExpense.toStringAsFixed(2)}', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: _expenses.isEmpty
-                      ? const Center(child: Text('कोई खर्च नहीं है। नीचे + दबाएं।'))
-                      : ListView.builder(
-                          itemCount: _expenses.length,
-                          itemBuilder: (ctx, i) {
-                            final item = _expenses[i];
-                            return ListTile(
-                              title: Text(item.title),
-                              subtitle: Text(item.category),
-                              trailing: Text('₹${item.amount}', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16)),
-                              onLongPress: () => _deleteExpense(item.id),
-                            );
-                          },
-                        ),
-                ),
-                if (_isBannerAdLoaded && _bannerAd != null)
-                  Container(
-                    alignment: Alignment.center,
-                    width: _bannerAd!.size.width.toDouble(),
-                    height: _bannerAd!.size.height.toDouble(),
-                    child: AdWidget(ad: _bannerAd!),
-                  ),
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Colors.teal, Colors.tealAccent],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                )
               ],
             ),
-      floatingActionButton: Padding(
-        padding: EdgeInsets.only(bottom: _isBannerAdLoaded ? 50.0 : 0.0),
-        child: FloatingActionButton(
-          onPressed: _openAddModal,
-          backgroundColor: const Color(0xFF0F766E),
-          foregroundColor: Colors.white,
-          child: const Icon(Icons.add),
-        ),
+            child: Column(
+              children: [
+                const Text(
+                  'कुल खर्च',
+                  style: TextStyle(color: Colors.white70, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '₹${_totalExpenses.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _expenses.isEmpty
+                ? const Center(
+                    child: Text(
+                      'अभी तक कोई खर्चा नहीं जोड़ा गया है।\nनीचे + दबाकर जोड़ें!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _expenses.length,
+                    itemBuilder: (ctx, index) {
+                      final item = _expenses[index];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: ListTile(
+                          leading: const CircleAvatar(
+                            backgroundColor: Colors.teal,
+                            foregroundColor: Colors.white,
+                            child: Icon(Icons.currency_rupee),
+                          ),
+                          title: Text(
+                            item['title'],
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(item['date']),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '₹${item['amount']}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: Colors.redAccent,
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.grey),
+                                onPressed: () => _deleteExpense(item['id']),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          if (_isBannerAdLoaded && _bannerAd != null)
+            Container(
+              alignment: Alignment.center,
+              width: _bannerAd!.size.width.toDouble(),
+              height: _bannerAd!.size.height.toDouble(),
+              child: AdWidget(ad: _bannerAd!),
+            ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showAddExpenseDialog,
+        backgroundColor: Colors.teal,
+        foregroundColor: Colors.white,
+        child: const Icon(Icons.add),
       ),
     );
   }
