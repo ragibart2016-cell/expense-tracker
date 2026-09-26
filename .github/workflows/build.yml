@@ -24,7 +24,7 @@ jobs:
       - name: Create Android Structure
         run: flutter create . --project-name expense_tracker --platforms=android
 
-      - name: Configure AdMob App ID
+      - name: Configure AdMob & Downgrade Gradle to 8.4
         run: |
           python3 -c '
           import xml.etree.ElementTree as ET
@@ -38,6 +38,9 @@ jobs:
           meta.set("{http://schemas.android.com/apk/res/android}value", "ca-app-pub-3940256099942544~3347511713")
           tree.write(path, encoding="utf-8", xml_declaration=True)
           '
+          # Set Gradle distribution to 8.4 to fix AdMob incompatibility
+          sed -i 's/gradle-.*-all.zip/gradle-8.4-all.zip/' android/gradle/wrapper/gradle-wrapper.properties
+          sed -i 's/gradle-.*-bin.zip/gradle-8.4-bin.zip/' android/gradle/wrapper/gradle-wrapper.properties
 
       - name: Install dependencies
         run: flutter pub get
