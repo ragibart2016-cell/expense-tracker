@@ -26,7 +26,7 @@ jobs:
       - name: Recreate Android Project if Missing
         run: |
           if [ ! -f "android/app/src/main/AndroidManifest.xml" ]; then
-            flutter create . --platforms=android --org com.example
+            flutter create . --project-name expense_tracker --platforms=android --org com.example
           fi
 
       - name: Inject AdMob App ID
