@@ -24,6 +24,23 @@ jobs:
       - name: Create Android Structure
         run: flutter create . --project-name expense_tracker --platforms=android
 
+      - name: Fix Kotlin Version and SDK
+        run: |
+          # 1. Update Kotlin to 1.9.20 in root build.gradle / settings.gradle
+          sed -i 's/ext.kotlin_version = .*/ext.kotlin_version = "1.9.20"/g' android/build.gradle || true
+          sed -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "1.9.20"/g' android/settings.gradle || true
+          sed -i 's/id "org.jetbrains.kotlin.android" version "[^"]*"/id "org.jetbrains.kotlin.android" version "1.9.20"/g' android/settings.gradle || true
+          
+          # 2. Set MinSDK 21
+          sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g' android/app/build.gradle || true
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle || true
+
+          # 3. Add AdMob App ID
+          sed -i 's/<\/application>/<meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-6500268418138615~1903722153"\/><\/application>/g' android/app/src/main/AndroidManifest.xml
+          
+          # 4. Set App Label to Kharch Diary
+          sed -i 's/android:label="expense_tracker"/android:label="Kharch Diary"/g' android/app/src/main/AndroidManifest.xml
+
       - name: Setup Native Icons
         run: |
           sudo apt-get update && sudo apt-get install -y imagemagick
@@ -44,13 +61,6 @@ jobs:
           convert ic_launcher.png -resize 432x432! android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png
           convert ic_launcher.png -resize 192x192! android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
           echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:color="@android:color/white"/><foreground android:drawable="@mipmap/ic_launcher_foreground"/></adaptive-icon>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-
-      - name: Configure App Details
-        run: |
-          sed -i 's/android:label="expense_tracker"/android:label="Kharch Diary"/g' android/app/src/main/AndroidManifest.xml
-          sed -i 's/<\/application>/<meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-6500268418138615~1903722153"\/><\/application>/g' android/app/src/main/AndroidManifest.xml
-          sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g' android/app/build.gradle || true
-          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle || true
 
       - name: Build APK
         run: flutter build apk --release
