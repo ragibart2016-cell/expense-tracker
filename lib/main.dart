@@ -117,6 +117,12 @@ class _HomeScreenState extends State<HomeScreen> {
     )..load();
   }
 
+  @override
+  void dispose() {
+    _banner?.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
     final p = await SharedPreferences.getInstance();
     final s = p.getString('expenses_data');
@@ -462,6 +468,4 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Icon(_icon(item['cat'])),
                           ),
                           title: Text(item['title'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text('${item['date']} • ${item['mode']}', style: const TextStyle(fontSize: 11)),
-                          trailing: Row(
-                      
+                          subtitle: Text('${item['date']} • ${item['mode']}', style: const TextStyl
