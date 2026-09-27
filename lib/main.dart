@@ -6,7 +6,6 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  // Fast Startup: Initialize MobileAds in the background without blocking the UI
   MobileAds.instance.initialize();
   runApp(const ExpenseTrackerApp());
 }
@@ -39,11 +38,11 @@ class ExpenseHomeScreen extends StatefulWidget {
 class _ExpenseHomeScreenState extends State<ExpenseHomeScreen> {
   List<Map<String, dynamic>> _transactions = [];
   String _searchQuery = '';
-  String _selectedFilter = 'ALL'; // ALL, EXPENSE, INCOME
+  String _selectedFilter = 'ALL';
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
-  String _selectedType = 'EXPENSE'; // EXPENSE or INCOME
+  String _selectedType = 'EXPENSE';
   String _selectedCategory = 'राशन / ग्रॉसरी';
   String _selectedPaymentMode = 'UPI / ऑनलाइन';
 
@@ -208,7 +207,6 @@ class _ExpenseHomeScreenState extends State<ExpenseHomeScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              // Segmented Type: Expense or Income
               Row(
                 children: [
                   Expanded(
@@ -216,10 +214,6 @@ class _ExpenseHomeScreenState extends State<ExpenseHomeScreen> {
                       label: const Center(child: Text('खर्च (Expense)')),
                       selected: _selectedType == 'EXPENSE',
                       selectedColor: Colors.red.shade100,
-                      labelStyle: TextStyle(
-                        color: _selectedType == 'EXPENSE' ? Colors.red.shade900 : Colors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
                       onSelected: (val) => setModalState(() => _selectedType = 'EXPENSE'),
                     ),
                   ),
@@ -229,10 +223,6 @@ class _ExpenseHomeScreenState extends State<ExpenseHomeScreen> {
                       label: const Center(child: Text('कमाई (Income)')),
                       selected: _selectedType == 'INCOME',
                       selectedColor: Colors.green.shade100,
-                      labelStyle: TextStyle(
-                        color: _selectedType == 'INCOME' ? Colors.green.shade900 : Colors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
                       onSelected: (val) => setModalState(() => _selectedType = 'INCOME'),
                     ),
                   ),
@@ -321,7 +311,6 @@ class _ExpenseHomeScreenState extends State<ExpenseHomeScreen> {
       ),
       body: Column(
         children: [
-          // Total Balance Card
           Container(
             width: double.infinity,
             margin: const EdgeInsets.all(16),
@@ -410,8 +399,6 @@ class _ExpenseHomeScreenState extends State<ExpenseHomeScreen> {
               ],
             ),
           ),
-
-          // Search & Filter Row
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
@@ -461,10 +448,7 @@ class _ExpenseHomeScreenState extends State<ExpenseHomeScreen> {
               ],
             ),
           ),
-
           const SizedBox(height: 8),
-
-          // Transaction List
           Expanded(
             child: list.isEmpty
                 ? const Center(
@@ -500,4 +484,16 @@ class _ExpenseHomeScreenState extends State<ExpenseHomeScreen> {
                           ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
-   
+                            children: [
+                              Text(
+                                '${isExpense ? "-" : "+"}₹${item['amount']}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: isExpense ? Colors.red.shade600 : Colors.green.shade700,
+                                ),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.delete_outline, color: Colors.grey.shade400, size: 20),
+                                onPressed: () => _deleteTransaction(item['id']),
+         
