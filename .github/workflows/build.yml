@@ -26,7 +26,7 @@ jobs:
 
       - name: Set App Name and Icon
         run: |
-          sed -i 's/android:label="expense_tracker"/android:label="खर्च डायरी"/g' android/app/src/main/AndroidManifest.xml
+          sed -i 's/android:label="expense_tracker"/android:label="Kharch Diary"/g' android/app/src/main/AndroidManifest.xml
           find android/app/src/main/res/ -name "ic_launcher.png" -exec cp ic_launcher.png {} \;
 
       - name: Fix Kotlin, MinSDK and AdMob ID
@@ -93,3 +93,4 @@ jobs:
         with:
           name: my-expense-tracker-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+          
