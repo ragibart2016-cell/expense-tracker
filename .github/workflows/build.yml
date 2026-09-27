@@ -29,6 +29,18 @@ jobs:
             flutter create . --project-name expense_tracker --platforms=android --org com.example
           fi
 
+      - name: Upgrade Kotlin and Configure Gradle
+        run: |
+          # settings.gradle में Kotlin वर्शन को 1.9.22 पर अपग्रेड करें
+          if [ -f "android/settings.gradle" ]; then
+            sed -i 's/id "org.jetbrains.kotlin.android" version "[^"]*"/id "org.jetbrains.kotlin.android" version "1.9.22"/g' android/settings.gradle
+            sed -i "s/id 'org.jetbrains.kotlin.android' version '[^']*'/id 'org.jetbrains.kotlin.android' version '1.9.22'/g" android/settings.gradle
+          fi
+          # अगर build.gradle में ext.kotlin_version है तो उसे भी 1.9.22 करें
+          if [ -f "android/build.gradle" ]; then
+            sed -i "s/ext.kotlin_version = .*/ext.kotlin_version = '1.9.22'/g" android/build.gradle
+          fi
+
       - name: Inject AdMob App ID
         run: |
           sed -i 's/<\/application>/<meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-8588358418138615~1083722153"\/><\/application>/g' android/app/src/main/AndroidManifest.xml
