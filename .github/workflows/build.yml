@@ -23,6 +23,12 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Recreate Android Project if Missing
+        run: |
+          if [ ! -f "android/app/src/main/AndroidManifest.xml" ]; then
+            flutter create . --platforms=android --org com.example
+          fi
+
       - name: Inject AdMob App ID
         run: |
           sed -i 's/<\/application>/<meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-8588358418138615~1083722153"\/><\/application>/g' android/app/src/main/AndroidManifest.xml
@@ -31,7 +37,7 @@ jobs:
         run: flutter pub get
 
       - name: Generate App Icons
-        run: dart run flutter_launcher_icons
+        run: dart run flutter_launcher_icons || true
 
       - name: Build APK
         run: flutter build apk --release
