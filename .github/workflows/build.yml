@@ -24,41 +24,50 @@ jobs:
       - name: Create Android Structure
         run: flutter create . --project-name expense_tracker --platforms=android
 
-      - name: Fix Kotlin Version and SDK
+      - name: Fix TargetSDK, Kotlin and App Details
         run: |
+          # 1. TargetSDK 34 (Fixes Play Protect 'older version' warning)
+          sed -i 's/targetSdkVersion = flutter.targetSdkVersion/targetSdkVersion = 34/g' android/app/build.gradle || true
+          sed -i 's/targetSdkVersion flutter.targetSdkVersion/targetSdkVersion 34/g' android/app/build.gradle || true
+          sed -i 's/compileSdkVersion = flutter.compileSdkVersion/compileSdkVersion = 34/g' android/app/build.gradle || true
+          sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 34/g' android/app/build.gradle || true
+          sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g' android/app/build.gradle || true
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle || true
+
+          # 2. Kotlin 1.9.20
           sed -i 's/ext.kotlin_version = .*/ext.kotlin_version = "1.9.20"/g' android/build.gradle || true
           sed -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "1.9.20"/g' android/settings.gradle || true
           sed -i 's/id "org.jetbrains.kotlin.android" version "[^"]*"/id "org.jetbrains.kotlin.android" version "1.9.20"/g' android/settings.gradle || true
-          sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g' android/app/build.gradle || true
-          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle || true
+
+          # 3. AdMob App ID & Label
           sed -i 's/<\/application>/<meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-6500268418138615~1903722153"\/><\/application>/g' android/app/src/main/AndroidManifest.xml
           sed -i 's/android:label="expense_tracker"/android:label="Kharch Diary"/g' android/app/src/main/AndroidManifest.xml
 
-      - name: Generate Perfect Launcher Icons
+      - name: Replace All Icons Cleanly
         run: |
           sudo apt-get update && sudo apt-get install -y imagemagick
 
-          # Density folders
+          # Generate mipmap layers
           for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
             mkdir -p "android/app/src/main/res/mipmap-$d"
           done
           mkdir -p android/app/src/main/res/mipmap-anydpi-v26
 
-          # 1. Square / Legacy Icons
+          # 1. Legacy & Round PNG Icons
           convert ic_launcher.png -resize 48x48!   android/app/src/main/res/mipmap-mdpi/ic_launcher.png
           convert ic_launcher.png -resize 72x72!   android/app/src/main/res/mipmap-hdpi/ic_launcher.png
           convert ic_launcher.png -resize 96x96!   android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
           convert ic_launcher.png -resize 144x144! android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
           convert ic_launcher.png -resize 192x192! android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
-          # 2. Foreground Icons with 65% centered ratio
-          convert ic_launcher.png -resize 70x70   -gravity center -background none -extent 108x108 android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png
-          convert ic_launcher.png -resize 105x105 -gravity center -background none -extent 162x162 android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png
-          convert ic_launcher.png -resize 140x140 -gravity center -background none -extent 216x216 android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png
-          convert ic_launcher.png -resize 210x210 -gravity center -background none -extent 324x324 android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png
-          convert ic_launcher.png -resize 280x280 -gravity center -background none -extent 432x432 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png
+          # 2. Foreground layers with safe zone
+          convert ic_launcher.png -resize 72x72   -gravity center -background none -extent 108x108 android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png
+          convert ic_launcher.png -resize 108x108 -gravity center -background none -extent 162x162 android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png
+          convert ic_launcher.png -resize 144x144 -gravity center -background none -extent 216x216 android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png
+          convert ic_launcher.png -resize 216x216 -gravity center -background none -extent 324x324 android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png
+          convert ic_launcher.png -resize 288x288 -gravity center -background none -extent 432x432 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png
 
-          # 3. Adaptive XML definition
+          # 3. Adaptive XML
           cat << 'EOF' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
           <?xml version="1.0" encoding="utf-8"?>
           <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
@@ -67,8 +76,8 @@ jobs:
           </adaptive-icon>
           EOF
 
-          # 4. Explicitly ensure Manifest points to ic_launcher
-          sed -i 's/android:icon="[^"]*"/android:icon="@mipmap\/ic_launcher"/g' android/app/src/main/AndroidManifest.xml
+          # 4. Point Manifest directly to ic_launcher
+          sed -i 's/android:icon="[^"]*"/android:icon="@mipmap\/ic_launcher" android:roundIcon="@mipmap\/ic_launcher"/g' android/app/src/main/AndroidManifest.xml
 
       - name: Build APK
         run: flutter build apk --release
