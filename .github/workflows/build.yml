@@ -24,57 +24,34 @@ jobs:
       - name: Create Android Structure
         run: flutter create . --project-name expense_tracker --platforms=android
 
-      - name: Generate Native Adaptive Launcher Icons
+      - name: Setup Native Icons
         run: |
           sudo apt-get update && sudo apt-get install -y imagemagick
-          python3 -c "
-import os, subprocess
-densities = {'mipmap-mdpi': (108, 48), 'mipmap-hdpi': (162, 72), 'mipmap-xhdpi': (216, 96), 'mipmap-xxhdpi': (324, 144), 'mipmap-xxxhdpi': (432, 192)}
-res_dir = 'android/app/src/main/res'
-for folder, (fg, leg) in densities.items():
-    p = os.path.join(res_dir, folder)
-    os.makedirs(p, exist_ok=True)
-    subprocess.run(['convert', 'ic_launcher.png', '-resize', f'{fg}x{fg}!', os.path.join(p, 'ic_launcher_foreground.png')], check=True)
-    subprocess.run(['convert', 'ic_launcher.png', '-resize', f'{leg}x{leg}!', os.path.join(p, 'ic_launcher.png')], check=True)
-v26 = os.path.join(res_dir, 'mipmap-anydpi-v26')
-os.makedirs(v26, exist_ok=True)
-with open(os.path.join(v26, 'ic_launcher.xml'), 'w') as f:
-    f.write('<?xml version=\"1.0\" encoding=\"utf-8\"?>\\n<adaptive-icon xmlns:android=\"http://schemas.android.com/apk/res/android\">\\n    <background android:color=\"@android:color/white\"/>\\n    <foreground android:drawable=\"@mipmap/ic_launcher_foreground\"/>\\n</adaptive-icon>')
-"
+          mkdir -p android/app/src/main/res/mipmap-mdpi
+          mkdir -p android/app/src/main/res/mipmap-hdpi
+          mkdir -p android/app/src/main/res/mipmap-xhdpi
+          mkdir -p android/app/src/main/res/mipmap-xxhdpi
+          mkdir -p android/app/src/main/res/mipmap-xxxhdpi
+          mkdir -p android/app/src/main/res/mipmap-anydpi-v26
+          convert ic_launcher.png -resize 108x108! android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png
+          convert ic_launcher.png -resize 48x48! android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          convert ic_launcher.png -resize 162x162! android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png
+          convert ic_launcher.png -resize 72x72! android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          convert ic_launcher.png -resize 216x216! android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png
+          convert ic_launcher.png -resize 96x96! android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          convert ic_launcher.png -resize 324x324! android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png
+          convert ic_launcher.png -resize 144x144! android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          convert ic_launcher.png -resize 432x432! android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png
+          convert ic_launcher.png -resize 192x192! android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:color="@android:color/white"/><foreground android:drawable="@mipmap/ic_launcher_foreground"/></adaptive-icon>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
 
-      - name: Set App Name
+      - name: Configure App Details
         run: |
           sed -i 's/android:label="expense_tracker"/android:label="Kharch Diary"/g' android/app/src/main/AndroidManifest.xml
-
-      - name: Fix Kotlin, MinSDK and AdMob ID
-        run: |
-          python3 -c "
-import xml.etree.ElementTree as ET, re
-path = 'android/app/src/main/AndroidManifest.xml'
-ET.register_namespace('android', 'http://schemas.android.com/apk/res/android')
-tree = ET.parse(path)
-app = tree.getroot().find('application')
-meta = ET.SubElement(app, 'meta-data')
-meta.set('{http://schemas.android.com/apk/res/android}name', 'com.google.android.gms.ads.APPLICATION_ID')
-meta.set('{http://schemas.android.com/apk/res/android}value', 'ca-app-pub-6500268418138615~1903722153')
-tree.write(path, encoding='utf-8', xml_declaration=True)
-
-with open('android/build.gradle', 'w') as f:
-    f.write('allprojects { repositories { google(); mavenCentral() } }\\nrootProject.buildDir = \"../build\"\\nsubprojects { project.buildDir = \"${rootProject.buildDir}/${project.name}\"; project.evaluationDependsOn(\":app\") }\\ntasks.register(\"clean\", Delete) { delete rootProject.buildDir }\\n')
-
-with open('android/settings.gradle', 'r') as f:
-    s = f.read()
-s = re.sub(r'org\.jetbrains\.kotlin\.android\"version\s*[\'\"][^\'\"]*[\'\"]', 'org.jetbrains.kotlin.android\" version \"1.9.20\"', s)
-s = re.sub(r'id\s+[\'\"]org\.jetbrains\.kotlin\.android[\'\"]\s+version\s+[\'\"][^\'\"]*[\'\"]', 'id \"org.jetbrains.kotlin.android\" version \"1.9.20\"', s)
-with open('android/settings.gradle', 'w') as f:
-    f.write(s)
-
-with open('android/app/build.gradle', 'r') as f:
-    a = f.read()
-a = a.replace('minSdkVersion = flutter.minSdkVersion', 'minSdkVersion = 21').replace('minSdkVersion flutter.minSdkVersion', 'minSdkVersion 21')
-with open('android/app/build.gradle', 'w') as f:
-    f.write(a)
-"
+          sed -i 's/<application/<application android:name="io.flutter.app.FlutterApplication"/g' android/app/src/main/AndroidManifest.xml || true
+          sed -i 's/<\/application>/<meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-6500268418138615~1903722153"\/><\/application>/g' android/app/src/main/AndroidManifest.xml
+          sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g' android/app/build.gradle || true
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle || true
 
       - name: Build APK
         run: flutter build apk --release
