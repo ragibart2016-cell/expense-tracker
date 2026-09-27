@@ -24,12 +24,42 @@ jobs:
       - name: Create Android Structure
         run: flutter create . --project-name expense_tracker --platforms=android
 
-      - name: Set App Name and Icon
+      - name: Setup Flutter Launcher Icons & Generate Perfect Icons
+        run: |
+          cat << 'EOF' > generate_icons.py
+          import yaml
+          import os
+
+          # Update pubspec.yaml with flutter_launcher_icons
+          with open("pubspec.yaml", "r") as f:
+              content = f.read()
+
+          if "flutter_launcher_icons" not in content:
+              config = """
+          dev_dependencies:
+            flutter_launcher_icons: "^0.13.1"
+
+          flutter_launcher_icons:
+            android: "launcher_icon"
+            ios: false
+            image_path: "ic_launcher.png"
+            min_sdk_android: 21
+            adaptive_icon_background: "#FFFFFF"
+            adaptive_icon_foreground: "ic_launcher.png"
+          """
+              content += config
+              with open("pubspec.yaml", "w") as f:
+                  f.write(content)
+          EOF
+          python3 generate_icons.py
+          flutter pub get
+          dart run flutter_launcher_icons
+
+      - name: Set App Name & Manifest Icon
         run: |
           sed -i 's/android:label="expense_tracker"/android:label="Kharch Diary"/g' android/app/src/main/AndroidManifest.xml
-          # Remove adaptive XML icons so Android is forced to use our exact 1:1 ic_launcher.png directly
-          rm -rf android/app/src/main/res/mipmap-anydpi-v26/
-          find android/app/src/main/res/ -name "ic_launcher.png" -exec cp ic_launcher.png {} \;
+          # Ensure manifest points to the new adaptive icon
+          sed -i 's/android:icon="@mipmap\/ic_launcher"/android:icon="@mipmap\/launcher_icon"/g' android/app/src/main/AndroidManifest.xml
 
       - name: Fix Kotlin, MinSDK and AdMob ID
         run: |
