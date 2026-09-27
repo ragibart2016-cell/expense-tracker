@@ -26,41 +26,49 @@ jobs:
 
       - name: Fix Kotlin Version and SDK
         run: |
-          # 1. Update Kotlin to 1.9.20 in root build.gradle / settings.gradle
           sed -i 's/ext.kotlin_version = .*/ext.kotlin_version = "1.9.20"/g' android/build.gradle || true
           sed -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "1.9.20"/g' android/settings.gradle || true
           sed -i 's/id "org.jetbrains.kotlin.android" version "[^"]*"/id "org.jetbrains.kotlin.android" version "1.9.20"/g' android/settings.gradle || true
-          
-          # 2. Set MinSDK 21
           sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g' android/app/build.gradle || true
           sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle || true
-
-          # 3. Add AdMob App ID
           sed -i 's/<\/application>/<meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-6500268418138615~1903722153"\/><\/application>/g' android/app/src/main/AndroidManifest.xml
-          
-          # 4. Set App Label to Kharch Diary
           sed -i 's/android:label="expense_tracker"/android:label="Kharch Diary"/g' android/app/src/main/AndroidManifest.xml
 
-      - name: Setup Native Icons
+      - name: Generate Perfect Launcher Icons
         run: |
           sudo apt-get update && sudo apt-get install -y imagemagick
-          mkdir -p android/app/src/main/res/mipmap-mdpi
-          mkdir -p android/app/src/main/res/mipmap-hdpi
-          mkdir -p android/app/src/main/res/mipmap-xhdpi
-          mkdir -p android/app/src/main/res/mipmap-xxhdpi
-          mkdir -p android/app/src/main/res/mipmap-xxxhdpi
+
+          # Density folders
+          for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            mkdir -p "android/app/src/main/res/mipmap-$d"
+          done
           mkdir -p android/app/src/main/res/mipmap-anydpi-v26
-          convert ic_launcher.png -resize 108x108! android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png
-          convert ic_launcher.png -resize 48x48! android/app/src/main/res/mipmap-mdpi/ic_launcher.png
-          convert ic_launcher.png -resize 162x162! android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png
-          convert ic_launcher.png -resize 72x72! android/app/src/main/res/mipmap-hdpi/ic_launcher.png
-          convert ic_launcher.png -resize 216x216! android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png
-          convert ic_launcher.png -resize 96x96! android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
-          convert ic_launcher.png -resize 324x324! android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png
+
+          # 1. Square / Legacy Icons
+          convert ic_launcher.png -resize 48x48!   android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          convert ic_launcher.png -resize 72x72!   android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          convert ic_launcher.png -resize 96x96!   android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
           convert ic_launcher.png -resize 144x144! android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-          convert ic_launcher.png -resize 432x432! android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png
           convert ic_launcher.png -resize 192x192! android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-          echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:color="@android:color/white"/><foreground android:drawable="@mipmap/ic_launcher_foreground"/></adaptive-icon>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+
+          # 2. Foreground Icons with 65% centered ratio
+          convert ic_launcher.png -resize 70x70   -gravity center -background none -extent 108x108 android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png
+          convert ic_launcher.png -resize 105x105 -gravity center -background none -extent 162x162 android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png
+          convert ic_launcher.png -resize 140x140 -gravity center -background none -extent 216x216 android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png
+          convert ic_launcher.png -resize 210x210 -gravity center -background none -extent 324x324 android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png
+          convert ic_launcher.png -resize 280x280 -gravity center -background none -extent 432x432 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png
+
+          # 3. Adaptive XML definition
+          cat << 'EOF' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:color="@android:color/white"/>
+              <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+          </adaptive-icon>
+          EOF
+
+          # 4. Explicitly ensure Manifest points to ic_launcher
+          sed -i 's/android:icon="[^"]*"/android:icon="@mipmap\/ic_launcher"/g' android/app/src/main/AndroidManifest.xml
 
       - name: Build APK
         run: flutter build apk --release
