@@ -24,6 +24,11 @@ jobs:
       - name: Create Android Structure
         run: flutter create . --project-name expense_tracker --platforms=android
 
+      - name: Set App Name and Icon
+        run: |
+          sed -i 's/android:label="expense_tracker"/android:label="खर्च डायरी"/g' android/app/src/main/AndroidManifest.xml
+          find android/app/src/main/res/ -name "ic_launcher.png" -exec cp ic_launcher.png {} \;
+
       - name: Fix Kotlin, MinSDK and AdMob ID
         run: |
           python3 -c '
@@ -37,7 +42,7 @@ jobs:
           app = root.find("application")
           meta = ET.SubElement(app, "meta-data")
           meta.set("{http://schemas.android.com/apk/res/android}name", "com.google.android.gms.ads.APPLICATION_ID")
-          meta.set("{http://schemas.android.com/apk/res/android}value", "ca-app-pub-6588358418138815~1983722153")
+          meta.set("{http://schemas.android.com/apk/res/android}value", "ca-app-pub-6500268418138615~1903722153")
           tree.write(path, encoding="utf-8", xml_declaration=True)
 
           # 2. Overwrite root build.gradle with Kotlin 1.9.20
@@ -65,8 +70,8 @@ jobs:
           with open("android/settings.gradle", "r") as f:
               settings_data = f.read()
           import re
-          settings_data = re.sub(r"org\.jetbrains\.kotlin\.android.*version\s+[\x27\x22][^\x27\x22]+[\x27\x22]", "org.jetbrains.kotlin.android\" version \"1.9.20\"", settings_data)
-          settings_data = re.sub(r"id\s+[\x27\x22]org\.jetbrains\.kotlin\.android[\x27\x22]\s+version\s+[\x27\x22][^\x27\x22]+[\x27\x22]", "id \"org.jetbrains.kotlin.android\" version \"1.9.20\"", settings_data)
+          settings_data = re.sub(r"org\.jetbrains\.kotlin\.android\"version\s*[\'\"][^\'\"]*[\'\"]", "org.jetbrains.kotlin.android\" version \"1.9.20\"", settings_data)
+          settings_data = re.sub(r"id\s+[\'\"]org\.jetbrains\.kotlin\.android[\'\"]\s+version\s+[\'\"][^\'\"]*[\'\"]", "id \"org.jetbrains.kotlin.android\" version \"1.9.20\"", settings_data)
           with open("android/settings.gradle", "w") as f:
               f.write(settings_data)
 
@@ -78,9 +83,6 @@ jobs:
           with open("android/app/build.gradle", "w") as f:
               f.write(app_data)
           '
-
-      - name: Install dependencies
-        run: flutter pub get
 
       - name: Build APK
         run: flutter build apk --release
