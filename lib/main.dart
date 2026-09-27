@@ -214,6 +214,10 @@ class _ExpenseHomeScreenState extends State<ExpenseHomeScreen> {
                       label: const Center(child: Text('खर्च (Expense)')),
                       selected: _selectedType == 'EXPENSE',
                       selectedColor: Colors.red.shade100,
+                      labelStyle: TextStyle(
+                        color: _selectedType == 'EXPENSE' ? Colors.red.shade900 : Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
                       onSelected: (val) => setModalState(() => _selectedType = 'EXPENSE'),
                     ),
                   ),
@@ -223,6 +227,10 @@ class _ExpenseHomeScreenState extends State<ExpenseHomeScreen> {
                       label: const Center(child: Text('कमाई (Income)')),
                       selected: _selectedType == 'INCOME',
                       selectedColor: Colors.green.shade100,
+                      labelStyle: TextStyle(
+                        color: _selectedType == 'INCOME' ? Colors.green.shade900 : Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
                       onSelected: (val) => setModalState(() => _selectedType = 'INCOME'),
                     ),
                   ),
@@ -489,11 +497,4 @@ class _ExpenseHomeScreenState extends State<ExpenseHomeScreen> {
                                 '${isExpense ? "-" : "+"}₹${item['amount']}',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  color: isExpense ? Colors.red.shade600 : Colors.green.shade700,
-                                ),
-                              ),
-                              IconButton(
-                                icon: Icon(Icons.delete_outline, color: Colors.grey.shade400, size: 20),
-                                onPressed: () => _deleteTransaction(item['id']),
-         
+            
