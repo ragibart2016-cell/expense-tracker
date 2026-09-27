@@ -24,40 +24,440 @@ jobs:
       - name: Create Android Structure
         run: flutter create . --project-name expense_tracker --platforms=android
 
-      - name: Setup Native Icons
+      - name: Download Clean Full-Featured main.dart
         run: |
-          sudo apt-get update && sudo apt-get install -y imagemagick
-          mkdir -p android/app/src/main/res/mipmap-mdpi
-          mkdir -p android/app/src/main/res/mipmap-hdpi
-          mkdir -p android/app/src/main/res/mipmap-xhdpi
-          mkdir -p android/app/src/main/res/mipmap-xxhdpi
-          mkdir -p android/app/src/main/res/mipmap-xxxhdpi
-          mkdir -p android/app/src/main/res/mipmap-anydpi-v26
-          convert ic_launcher.png -resize 108x108! android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png
-          convert ic_launcher.png -resize 48x48! android/app/src/main/res/mipmap-mdpi/ic_launcher.png
-          convert ic_launcher.png -resize 162x162! android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png
-          convert ic_launcher.png -resize 72x72! android/app/src/main/res/mipmap-hdpi/ic_launcher.png
-          convert ic_launcher.png -resize 216x216! android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png
-          convert ic_launcher.png -resize 96x96! android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
-          convert ic_launcher.png -resize 324x324! android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png
-          convert ic_launcher.png -resize 144x144! android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-          convert ic_launcher.png -resize 432x432! android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png
-          convert ic_launcher.png -resize 192x192! android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-          echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:color="@android:color/white"/><foreground android:drawable="@mipmap/ic_launcher_foreground"/></adaptive-icon>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          curl -sL "https://raw.githubusercontent.com/ragibart2016-cell/expense-tracker/main/lib/main.dart" > lib/main.dart.bak || true
+          curl -sL "https://gist.githubusercontent.com/ragibart2016-cell/f6d729a8c17b5fba45c7adcf360706fe/raw/main.dart" -o lib/main.dart || true
+          if [ ! -s lib/main.dart ] || grep -q "Expected ';'" lib/main.dart; then
+            cat << 'EOF' > update_main.py
+          import base64
+          # Raw clean source for Kharch Diary with all features and animated splash
+          code = """import 'package:flutter/material.dart';
+          import 'package:shared_preferences/shared_preferences.dart';
+          import 'package:intl/intl.dart';
+          import 'dart:convert';
+          import 'package:google_mobile_ads/google_mobile_ads.dart';
 
-      - name: Configure App Details
-        run: |
-          sed -i 's/android:label="expense_tracker"/android:label="Kharch Diary"/g' android/app/src/main/AndroidManifest.xml
-          sed -i 's/<\/application>/<meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-6500268418138615~1903722153"\/><\/application>/g' android/app/src/main/AndroidManifest.xml
-          sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g' android/app/build.gradle || true
-          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle || true
+          void main() {
+            WidgetsFlutterBinding.ensureInitialized();
+            MobileAds.instance.initialize();
+            runApp(const KharchDiaryApp());
+          }
 
-      - name: Build APK
-        run: flutter build apk --release
+          class KharchDiaryApp extends StatelessWidget {
+            const KharchDiaryApp({super.key});
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: my-expense-tracker-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
-          
+            @override
+            Widget build(BuildContext context) {
+              return MaterialApp(
+                title: 'Kharch Diary',
+                theme: ThemeData(
+                  colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0F766E)),
+                  useMaterial3: true,
+                  scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+                ),
+                home: const SplashScreen(),
+                debugShowCheckedModeBanner: false,
+              );
+            }
+          }
+
+          class SplashScreen extends StatefulWidget {
+            const SplashScreen({super.key});
+
+            @override
+            State<SplashScreen> createState() => _SplashScreenState();
+          }
+
+          class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+            late AnimationController _animController;
+            late Animation<double> _animation;
+
+            @override
+            void initState() {
+              super.initState();
+              _animController = AnimationController(
+                vsync: this,
+                duration: const Duration(milliseconds: 900),
+              )..repeat(reverse: true);
+
+              _animation = Tween<double>(begin: 0.6, end: 1.0).animate(
+                CurvedAnimation(parent: _animController, curve: Curves.easeInOut),
+              );
+
+              Future.delayed(const Duration(milliseconds: 1400), () {
+                if (mounted) {
+                  Navigator.of(context).pushReplacement(
+                    PageRouteBuilder(
+                      pageBuilder: (_, __, ___) => const ExpenseHomeScreen(),
+                      transitionsBuilder: (_, animation, __, child) =>
+                          FadeTransition(opacity: animation, child: child),
+                      transitionDuration: const Duration(milliseconds: 300),
+                    ),
+                  );
+                }
+              });
+            }
+
+            @override
+            void dispose() {
+              _animController.dispose();
+              super.dispose();
+            }
+
+            @override
+            Widget build(BuildContext context) {
+              return Scaffold(
+                backgroundColor: Colors.white,
+                body: Center(
+                  child: FadeTransition(
+                    opacity: _animation,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0F766E),
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF0F766E).withOpacity(0.3),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
+                              )
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.account_balance_wallet_rounded,
+                            color: Colors.white,
+                            size: 54,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        const Text(
+                          'Kharch Diary',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                            color: Color(0xFF0F766E),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+          }
+
+          class ExpenseHomeScreen extends StatefulWidget {
+            const ExpenseHomeScreen({super.key});
+
+            @override
+            State<ExpenseHomeScreen> createState() => _ExpenseHomeScreenState();
+          }
+
+          class _ExpenseHomeScreenState extends State<ExpenseHomeScreen> {
+            List<Map<String, dynamic>> _transactions = [];
+            String _searchQuery = '';
+            String _selectedFilter = 'ALL';
+
+            final TextEditingController _titleController = TextEditingController();
+            final TextEditingController _amountController = TextEditingController();
+            String _selectedType = 'EXPENSE';
+            String _selectedCategory = 'राशन / ग्रॉसरी';
+            String _selectedPaymentMode = 'UPI / ऑनलाइन';
+
+            BannerAd? _bannerAd;
+            bool _isBannerAdLoaded = false;
+            final String _adUnitId = 'ca-app-pub-6588358418138815/8714606100';
+
+            final List<Map<String, dynamic>> _categories = [
+              {'name': 'राशन / ग्रॉसरी', 'icon': Icons.shopping_basket},
+              {'name': 'खाना / होटल', 'icon': Icons.restaurant},
+              {'name': 'पेट्रोल / यात्रा', 'icon': Icons.directions_car},
+              {'name': 'बिल / रिचार्ज', 'icon': Icons.receipt_long},
+              {'name': 'शॉपिंग / कपड़े', 'icon': Icons.shopping_bag},
+              {'name': 'सैलरी / कमाई', 'icon': Icons.account_balance_wallet},
+              {'name': 'अन्य खर्च', 'icon': Icons.category},
+            ];
+
+            final List<Map<String, dynamic>> _paymentModes = [
+              {'name': 'UPI / ऑनलाइन', 'icon': Icons.qr_code_scanner},
+              {'name': 'नकद (Cash)', 'icon': Icons.payments_outlined},
+              {'name': 'बैंक / कार्ड', 'icon': Icons.credit_card},
+            ];
+
+            @override
+            void initState() {
+              super.initState();
+              _loadData();
+              _initBannerAd();
+            }
+
+            void _initBannerAd() {
+              _bannerAd = BannerAd(
+                adUnitId: _adUnitId,
+                size: AdSize.banner,
+                request: const AdRequest(),
+                listener: BannerAdListener(
+                  onAdLoaded: (ad) => setState(() => _isBannerAdLoaded = true),
+                  onAdFailedToLoad: (ad, error) => ad.dispose(),
+                ),
+              );
+              _bannerAd?.load();
+            }
+
+            @override
+            void dispose() {
+              _bannerAd?.dispose();
+              _titleController.dispose();
+              _amountController.dispose();
+              super.dispose();
+            }
+
+            Future<void> _loadData() async {
+              final prefs = await SharedPreferences.getInstance();
+              final String? dataString = prefs.getString('expenses_data');
+              if (dataString != null) {
+                final List<dynamic> decoded = json.decode(dataString);
+                setState(() {
+                  _transactions = decoded.map((item) {
+                    final map = Map<String, dynamic>.from(item);
+                    map['type'] = map['type'] ?? 'EXPENSE';
+                    map['category'] = map['category'] ?? 'अन्य खर्च';
+                    map['paymentMode'] = map['paymentMode'] ?? 'नकद (Cash)';
+                    return map;
+                  }).toList();
+                });
+              }
+            }
+
+            Future<void> _saveData() async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString('expenses_data', json.encode(_transactions));
+            }
+
+            void _addTransaction() {
+              final String title = _titleController.text.trim();
+              final double? amount = double.tryParse(_amountController.text.trim());
+
+              if (title.isEmpty || amount == null || amount <= 0) return;
+
+              final newEntry = {
+                'id': DateTime.now().millisecondsSinceEpoch.toString(),
+                'title': title,
+                'amount': amount,
+                'type': _selectedType,
+                'category': _selectedCategory,
+                'paymentMode': _selectedPaymentMode,
+                'date': DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.now()),
+              };
+
+              setState(() {
+                _transactions.insert(0, newEntry);
+              });
+
+              _saveData();
+              _titleController.clear();
+              _amountController.clear();
+              Navigator.of(context).pop();
+            }
+
+            void _deleteTransaction(String id) {
+              setState(() {
+                _transactions.removeWhere((item) => item['id'] == id);
+              });
+              _saveData();
+            }
+
+            double get _totalIncome => _transactions
+                .where((item) => item['type'] == 'INCOME')
+                .fold(0.0, (sum, item) => sum + (item['amount'] as num).toDouble());
+
+            double get _totalExpense => _transactions
+                .where((item) => item['type'] == 'EXPENSE')
+                .fold(0.0, (sum, item) => sum + (item['amount'] as num).toDouble());
+
+            double get _netBalance => _totalIncome - _totalExpense;
+
+            List<Map<String, dynamic>> get _filteredTransactions {
+              return _transactions.where((item) {
+                final matchesFilter = _selectedFilter == 'ALL' || item['type'] == _selectedFilter;
+                final matchesSearch = item['title'].toString().toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                    item['category'].toString().toLowerCase().contains(_searchQuery.toLowerCase());
+                return matchesFilter && matchesSearch;
+              }).toList();
+            }
+
+            IconData _getCategoryIcon(String category) {
+              final match = _categories.firstWhere(
+                (cat) => cat['name'] == category,
+                orElse: () => {'icon': Icons.currency_rupee},
+              );
+              return match['icon'] as IconData;
+            }
+
+            void _showAddDialog() {
+              _selectedType = 'EXPENSE';
+              _selectedCategory = 'राशन / ग्रॉसरी';
+              _selectedPaymentMode = 'UPI / ऑनलाइन';
+
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                builder: (ctx) => StatefulBuilder(
+                  builder: (context, setModalState) => Padding(
+                    padding: EdgeInsets.only(
+                      bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+                      top: 20,
+                      left: 20,
+                      right: 20,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('नया लेन-देन जोड़ें', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ChoiceChip(
+                                avatar: const Icon(Icons.arrow_upward, size: 16, color: Colors.red),
+                                label: const Text('खर्च (Expense)'),
+                                selected: _selectedType == 'EXPENSE',
+                                selectedColor: Colors.red.shade100,
+                                labelStyle: TextStyle(
+                                  color: _selectedType == 'EXPENSE' ? Colors.red.shade900 : Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                onSelected: (val) => setModalState(() => _selectedType = 'EXPENSE'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: ChoiceChip(
+                                avatar: const Icon(Icons.arrow_downward, size: 16, color: Colors.green),
+                                label: const Text('कमाई (Income)'),
+                                selected: _selectedType == 'INCOME',
+                                selectedColor: Colors.green.shade100,
+                                labelStyle: TextStyle(
+                                  color: _selectedType == 'INCOME' ? Colors.green.shade900 : Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                onSelected: (val) => setModalState(() => _selectedType = 'INCOME'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _amountController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          autofocus: true,
+                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                          decoration: InputDecoration(
+                            prefixText: '₹ ',
+                            labelText: 'रकम (Amount)',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _titleController,
+                          decoration: InputDecoration(
+                            labelText: 'विवरण / नाम (उदा. दूध, सब्ज़ी, सैलरी)',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: _selectedCategory,
+                          decoration: InputDecoration(
+                            labelText: 'कैटिगरी',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          items: _categories.map((c) {
+                            return DropdownMenuItem<String>(
+                              value: c['name'] as String,
+                              child: Row(
+                                children: [
+                                  Icon(c['icon'] as IconData, size: 20, color: const Color(0xFF0F766E)),
+                                  const SizedBox(width: 8),
+                                  Text(c['name'] as String),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (val) => setModalState(() => _selectedCategory = val!),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: _selectedPaymentMode,
+                          decoration: InputDecoration(
+                            labelText: 'पेमेंट मोड',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          items: _paymentModes.map((m) {
+                            return DropdownMenuItem<String>(
+                              value: m['name'] as String,
+                              child: Row(
+                                children: [
+                                  Icon(m['icon'] as IconData, size: 20, color: Colors.blueGrey),
+                                  const SizedBox(width: 8),
+                                  Text(m['name'] as String),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (val) => setModalState(() => _selectedPaymentMode = val!),
+                        ),
+                        const SizedBox(height: 18),
+                        ElevatedButton(
+                          onPressed: _addTransaction,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _selectedType == 'EXPENSE' ? Colors.red.shade700 : const Color(0xFF0F766E),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text('सुरक्षित सेव करें', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            @override
+            Widget build(BuildContext context) {
+              final list = _filteredTransactions;
+
+              return Scaffold(
+                appBar: AppBar(
+                  title: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.account_balance_wallet_rounded, color: Colors.white),
+                      SizedBox(width: 8),
+                      Text('Kharch Diary', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  backgroundColor: const Color(0xFF0F766E),
+                  foregroundColor: Colors.white,
+                  centerTitle: true,
+                  elevati
