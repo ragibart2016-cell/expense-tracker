@@ -29,6 +29,10 @@ jobs:
             flutter create . --project-name expense_tracker --platforms=android --org com.example
           fi
 
+      - name: Set App Name to Kharch Diary
+        run: |
+          sed -i 's/android:label="[^"]*"/android:label="Kharch Diary"/g' android/app/src/main/AndroidManifest.xml
+
       - name: Upgrade Kotlin and Configure Gradle
         run: |
           if [ -f "android/settings.gradle" ]; then
