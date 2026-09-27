@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:intl/intl.dart';
 import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 void main() {
@@ -30,9 +30,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 700))..repeat(reverse: true);
     _a = Tween<double>(begin: 0.4, end: 1.0).animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
     Future.delayed(const Duration(milliseconds: 1400), () {
-      if (mounted) {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
-      }
+      if (mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
     });
   }
 
@@ -182,64 +180,25 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: Column(
                 children: [
-                  Text(
-                    '${isExp ? "-" : "+"}₹${amount.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: isExp ? Colors.red.shade700 : Colors.green.shade700,
-                    ),
-                  ),
+                  Text('${isExp ? "-" : "+"}₹${amount.toStringAsFixed(2)}', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: isExp ? Colors.red.shade700 : Colors.green.shade700)),
                   const SizedBox(height: 4),
-                  Text(
-                    isExp ? 'खर्च (Expense)' : 'कमाई (Income)',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: isExp ? Colors.red.shade800 : Colors.green.shade800,
-                    ),
-                  ),
+                  Text(isExp ? 'खर्च (Expense)' : 'कमाई (Income)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isExp ? Colors.red.shade800 : Colors.green.shade800)),
                 ],
               ),
             ),
             const SizedBox(height: 16),
-            ListTile(
-              leading: const Icon(Icons.edit_note_rounded, color: Color(0xFF0F766E), size: 28),
-              title: const Text('विवरण / नाम', style: TextStyle(fontSize: 12, color: Colors.grey)),
-              subtitle: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              contentPadding: EdgeInsets.zero,
-            ),
+            ListTile(leading: const Icon(Icons.edit_note_rounded, color: Color(0xFF0F766E), size: 28), title: const Text('विवरण / नाम', style: TextStyle(fontSize: 12, color: Colors.grey)), subtitle: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)), contentPadding: EdgeInsets.zero),
             const Divider(),
-            ListTile(
-              leading: Icon(_icon(cat), color: const Color(0xFF0F766E), size: 26),
-              title: const Text('कैटिगरी', style: TextStyle(fontSize: 12, color: Colors.grey)),
-              subtitle: Text(cat, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              contentPadding: EdgeInsets.zero,
-            ),
+            ListTile(leading: Icon(_icon(cat), color: const Color(0xFF0F766E), size: 26), title: const Text('कैटिगरी', style: TextStyle(fontSize: 12, color: Colors.grey)), subtitle: Text(cat, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)), contentPadding: EdgeInsets.zero),
             const Divider(),
-            ListTile(
-              leading: const Icon(Icons.payment_rounded, color: Color(0xFF0F766E), size: 26),
-              title: const Text('पेमेंट माध्यम', style: TextStyle(fontSize: 12, color: Colors.grey)),
-              subtitle: Text(mode, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              contentPadding: EdgeInsets.zero,
-            ),
+            ListTile(leading: const Icon(Icons.payment_rounded, color: Color(0xFF0F766E), size: 26), title: const Text('पेमेंट माध्यम', style: TextStyle(fontSize: 12, color: Colors.grey)), subtitle: Text(mode, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)), contentPadding: EdgeInsets.zero),
             const Divider(),
-            ListTile(
-              leading: const Icon(Icons.calendar_today_rounded, color: Color(0xFF0F766E), size: 24),
-              title: const Text('तारीख और समय', style: TextStyle(fontSize: 12, color: Colors.grey)),
-              subtitle: Text(date, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              contentPadding: EdgeInsets.zero,
-            ),
+            ListTile(leading: const Icon(Icons.calendar_today_rounded, color: Color(0xFF0F766E), size: 24), title: const Text('तारीख और समय', style: TextStyle(fontSize: 12, color: Colors.grey)), subtitle: Text(date, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)), contentPadding: EdgeInsets.zero),
             const SizedBox(height: 20),
             ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red.shade600,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade600, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
               icon: const Icon(Icons.delete_outline),
-              label: const Text('इस लेन-देन को हटाएँ (Delete)', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              label: const Text('हटाएँ (Delete)', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
               onPressed: () {
                 setState(() => _list.removeWhere((x) => x['id'] == item['id']));
                 _save();
@@ -251,8 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
-  void _showAdd() {
+    void _showAdd() {
     final tC = TextEditingController();
     final aC = TextEditingController();
     String type = 'EXPENSE';
@@ -278,77 +236,31 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               Row(
                 children: [
-                  Expanded(
-                    child: ChoiceChip(
-                      label: const Center(child: Text('खर्च (Expense)')),
-                      selected: type == 'EXPENSE',
-                      selectedColor: Colors.red.shade100,
-                      onSelected: (_) => setM(() => type = 'EXPENSE'),
-                    ),
-                  ),
+                  Expanded(child: ChoiceChip(label: const Center(child: Text('खर्च')), selected: type == 'EXPENSE', selectedColor: Colors.red.shade100, onSelected: (_) => setM(() => type = 'EXPENSE'))),
                   const SizedBox(width: 8),
-                  Expanded(
-                    child: ChoiceChip(
-                      label: const Center(child: Text('कमाई (Income)')),
-                      selected: type == 'INCOME',
-                      selectedColor: Colors.green.shade100,
-                      onSelected: (_) => setM(() => type = 'INCOME'),
-                    ),
-                  ),
+                  Expanded(child: ChoiceChip(label: const Center(child: Text('कमाई')), selected: type == 'INCOME', selectedColor: Colors.green.shade100, onSelected: (_) => setM(() => type = 'INCOME'))),
                 ],
               ),
               const SizedBox(height: 10),
-              TextField(
-                controller: aC,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                autofocus: true,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                decoration: const InputDecoration(labelText: 'रकम (₹) *', border: OutlineInputBorder()),
-              ),
+              TextField(controller: aC, keyboardType: const TextInputType.numberWithOptions(decimal: true), autofocus: true, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold), decoration: const InputDecoration(labelText: 'रकम (₹) *', border: OutlineInputBorder())),
               const SizedBox(height: 10),
-              TextField(
-                controller: tC,
-                decoration: const InputDecoration(labelText: 'विवरण / नाम (खाली छोड़ने पर कैटिगरी का नाम रहेगा)', border: OutlineInputBorder()),
-              ),
+              TextField(controller: tC, decoration: const InputDecoration(labelText: 'विवरण (खाली छोड़ने पर कैटिगरी)', border: OutlineInputBorder())),
               const SizedBox(height: 10),
-              DropdownButtonFormField<String>(
-                value: cat,
-                decoration: const InputDecoration(labelText: 'कैटिगरी', border: OutlineInputBorder()),
-                items: _cats.map((c) => DropdownMenuItem(value: c['name'] as String, child: Text(c['name'] as String))).toList(),
-                onChanged: (v) => setM(() => cat = v!),
-              ),
+              DropdownButtonFormField<String>(value: cat, decoration: const InputDecoration(labelText: 'कैटिगरी', border: OutlineInputBorder()), items: _cats.map((c) => DropdownMenuItem(value: c['name'] as String, child: Text(c['name'] as String))).toList(), onChanged: (v) => setM(() => cat = v!)),
               const SizedBox(height: 10),
-              DropdownButtonFormField<String>(
-                value: mode,
-                decoration: const InputDecoration(labelText: 'पेमेंट मोड', border: OutlineInputBorder()),
-                items: _modes.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
-                onChanged: (v) => setM(() => mode = v!),
-              ),
+              DropdownButtonFormField<String>(value: mode, decoration: const InputDecoration(labelText: 'पेमेंट मोड', border: OutlineInputBorder()), items: _modes.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(), onChanged: (v) => setM(() => mode = v!)),
               const SizedBox(height: 14),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: type == 'EXPENSE' ? Colors.red.shade700 : const Color(0xFF0F766E),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
+                  style: ElevatedButton.styleFrom(backgroundColor: type == 'EXPENSE' ? Colors.red.shade700 : const Color(0xFF0F766E), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14)),
                   onPressed: () {
                     final a = double.tryParse(aC.text.trim());
                     if (a == null || a <= 0) return;
                     String t = tC.text.trim();
                     if (t.isEmpty) t = cat;
-
                     setState(() {
-                      _list.insert(0, {
-                        'id': DateTime.now().millisecondsSinceEpoch.toString(),
-                        'title': t,
-                        'amount': a,
-                        'type': type,
-                        'cat': cat,
-                        'mode': mode,
-                        'date': DateFormat('dd MMM, hh:mm a').format(DateTime.now()),
-                      });
+                      _list.insert(0, {'id': DateTime.now().millisecondsSinceEpoch.toString(), 'title': t, 'amount': a, 'type': type, 'cat': cat, 'mode': mode, 'date': DateFormat('dd MMM, hh:mm a').format(DateTime.now())});
                     });
                     _save();
                     Navigator.pop(ctx);
@@ -367,59 +279,28 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final filtered = _list.where((e) {
       final mF = _filter == 'ALL' || e['type'] == _filter;
-      final mS = e['title'].toString().toLowerCase().contains(_query.toLowerCase()) ||
-          e['cat'].toString().toLowerCase().contains(_query.toLowerCase());
+      final mS = e['title'].toString().toLowerCase().contains(_query.toLowerCase()) || e['cat'].toString().toLowerCase().contains(_query.toLowerCase());
       return mF && mS;
     }).toList();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.account_balance_wallet_rounded, color: Colors.white),
-          SizedBox(width: 8),
-          Text('Kharch Diary', style: TextStyle(fontWeight: FontWeight.bold)),
-        ]),
-        backgroundColor: const Color(0xFF0F766E),
-        foregroundColor: Colors.white,
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Kharch Diary', style: TextStyle(fontWeight: FontWeight.bold)), backgroundColor: const Color(0xFF0F766E), foregroundColor: Colors.white, centerTitle: true),
       body: Column(
         children: [
           Container(
             margin: const EdgeInsets.all(12),
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF0F766E), Color(0xFF14B8A6)]),
-              borderRadius: BorderRadius.circular(16),
-            ),
+            decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF0F766E), Color(0xFF14B8A6)]), borderRadius: BorderRadius.circular(16)),
             child: Column(
               children: [
-                const Text('बचा हुआ बैलेंस (Net Balance)', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                const Text('बचा हुआ बैलेंस', style: TextStyle(color: Colors.white70, fontSize: 13)),
                 Text('₹${(_inc - _exp).toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(8)),
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          const Row(children: [Icon(Icons.arrow_downward, color: Colors.greenAccent, size: 14), Text(' कमाई', style: TextStyle(color: Colors.white70, fontSize: 11))]),
-                          Text('₹${_inc.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                        ]),
-                      ),
-                    ),
+                    Expanded(child: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(8)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Row(children: [Icon(Icons.arrow_downward, color: Colors.greenAccent, size: 14), Text(' कमाई', style: TextStyle(color: Colors.white70, fontSize: 11))]), Text('₹${_inc.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))]))),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(8)),
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          const Row(children: [Icon(Icons.arrow_upward, color: Colors.redAccent, size: 14), Text(' खर्च', style: TextStyle(color: Colors.white70, fontSize: 11))]),
-                          Text('₹${_exp.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                        ]),
-                      ),
-                    ),
+                    Expanded(child: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(8)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Row(children: [Icon(Icons.arrow_upward, color: Colors.redAccent, size: 14), Text(' खर्च', style: TextStyle(color: Colors.white70, fontSize: 11))]), Text('₹${_exp.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))]))),
                   ],
                 ),
               ],
@@ -427,15 +308,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: TextField(
-              onChanged: (v) => setState(() => _query = v),
-              decoration: InputDecoration(
-                hintText: 'सर्च करें...',
-                prefixIcon: const Icon(Icons.search, size: 20),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
+            child: TextField(onChanged: (v) => setState(() => _query = v), decoration: InputDecoration(hintText: 'सर्च करें...', prefixIcon: const Icon(Icons.search, size: 20), contentPadding: const EdgeInsets.symmetric(horizontal: 12), border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)))),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -462,10 +335,38 @@ class _HomeScreenState extends State<HomeScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         child: ListTile(
                           onTap: () => _showDetails(item),
-                          leading: CircleAvatar(
-                            backgroundColor: isExp ? Colors.red.shade50 : Colors.green.shade50,
-                            foregroundColor: isExp ? Colors.red.shade700 : Colors.green.shade700,
-                            child: Icon(_icon(item['cat'])),
-                          ),
+                          leading: CircleAvatar(backgroundColor: isExp ? Colors.red.shade50 : Colors.green.shade50, foregroundColor: isExp ? Colors.red.shade700 : Colors.green.shade700, child: Icon(_icon(item['cat']))),
                           title: Text(item['title'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text('${item['date']} • ${item['mode']}', style: const TextStyl
+                          subtitle: Text('${item['date']} • ${item['mode']}', style: const TextStyle(fontSize: 11)),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('${isExp ? "-" : "+"}₹${item['amount']}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isExp ? Colors.red : Colors.green)),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, size: 20, color: Colors.grey),
+                                onPressed: () {
+                                  setState(() => _list.removeWhere((x) => x['id'] == item['id']));
+                                  _save();
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          if (_adReady && _banner != null)
+            SizedBox(width: _banner!.size.width.toDouble(), height: _banner!.size.height.toDouble(), child: AdWidget(ad: _banner!)),
+        ],
+      ),
+            floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF0F766E),
+        foregroundColor: Colors.white,
+        onPressed: _showAdd,
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+
