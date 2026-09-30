@@ -24,7 +24,7 @@ jobs:
 
       - name: Recreate Android Project Config
         run: |
-          flutter create --platforms=android .
+          flutter create --project-name expense_tracker --platforms=android .
           flutter pub get
 
       - name: Build Android App Bundle (.aab)
