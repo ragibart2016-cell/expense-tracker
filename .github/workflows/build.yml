@@ -22,19 +22,45 @@ jobs:
           flutter-version: '3.22.2'
           channel: 'stable'
 
-      - name: Setup Android & Force Kotlin 1.9.22
+      - name: Recreate Android Project & Force Modern Kotlin
         run: |
           # Fresh android structure generate karein
           flutter create --project-name expense_tracker --platforms=android .
-          
-          # Gradle wrapper ko 8.4 par set karein
+
+          # 1. Gradle Wrapper 8.4
           sed -i 's/gradle-.*-all.zip/gradle-8.4-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
           sed -i 's/gradle-.*-bin.zip/gradle-8.4-bin.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
 
-          # Kotlin version 1.9.22 force karein
-          sed -i "s/ext.kotlin_version = .*/ext.kotlin_version = '1.9.22'/g" android/build.gradle || true
+          # 2. android/settings.gradle me modern Kotlin plugin version 1.9.22 set karein
+          cat << 'EOF' > android/settings.gradle
+          pluginManagement {
+              def flutterSdkPath = {
+                  def properties = new Properties()
+                  file("local.properties").withInputStream { properties.load(it) }
+                  def flutterSdkPath = properties.getProperty("flutter.sdk")
+                  assert flutterSdkPath != null : "flutter.sdk not set in local.properties"
+                  return flutterSdkPath
+              }()
 
-          # minSdkVersion 21 set karein
+              includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
+
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+
+          plugins {
+              id "dev.flutter.flutter-plugin-loader" version "1.0.0"
+              id "com.android.application" version "8.3.2" apply false
+              id "org.jetbrains.kotlin.android" version "1.9.22" apply false
+          }
+
+          include ":app"
+          EOF
+
+          # 3. minSdkVersion 21 set karein
           sed -i "s/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g" android/app/build.gradle || true
           sed -i "s/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g" android/app/build.gradle || true
 
