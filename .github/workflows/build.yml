@@ -22,7 +22,7 @@ jobs:
           flutter-version: '3.22.2'
           channel: 'stable'
 
-      - name: Setup Android & Upgrade Gradle to 8.4
+      - name: Setup Android & Force Kotlin 1.9.22
         run: |
           # Fresh android structure generate karein
           flutter create --project-name expense_tracker --platforms=android .
@@ -30,11 +30,28 @@ jobs:
           # Gradle wrapper ko 8.4 par set karein
           sed -i 's/gradle-.*-all.zip/gradle-8.4-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
           sed -i 's/gradle-.*-bin.zip/gradle-8.4-bin.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
-          
-          # minSdkVersion ko 21 set karein
-          sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g' android/app/build.gradle || true
-          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle || true
-          
+
+          # Python se build.gradle me Kotlin 1.9.22 aur minSdkVersion 21 force karein
+          python3 -c "
+          import re
+          # Update android/build.gradle
+          with open('android/build.gradle', 'r') as f:
+              content = f.read()
+          content = re.sub(r\"ext\.kotlin_version\s*=\s*['\"][^'\"]+['\"]\", \"ext.kotlin_version = '1.9.22'\", content)
+          if 'ext.kotlin_version' not in content:
+              content = \"buildscript { ext.kotlin_version = '1.9.22' }\n\" + content
+          with open('android/build.gradle', 'w') as f:
+              f.write(content)
+
+          # Update android/app/build.gradle
+          with open('android/app/build.gradle', 'r') as f:
+              app_content = f.read()
+          app_content = re.sub(r'minSdkVersion\s+.*', 'minSdkVersion 21', app_content)
+          app_content = re.sub(r'minSdkVersion\s*=\s*.*', 'minSdkVersion = 21', app_content)
+          with open('android/app/build.gradle', 'w') as f:
+              f.write(app_content)
+          "
+
           flutter pub get
 
       - name: Build Android App Bundle (.aab)
