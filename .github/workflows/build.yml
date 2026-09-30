@@ -1,64 +1,36 @@
-name: Build Android APK
+name: Generate Play Store AAB
 
 on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-bundle:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Set up Java 17
+      - name: Setup Java JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: 'zulu'
           java-version: '17'
 
-      - name: Set up Flutter
+      - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
+          flutter-version: '3.22.x'
           channel: 'stable'
-          cache: true
 
-      - name: Recreate Android Project if Missing
-        run: |
-          if [ ! -f "android/app/src/main/AndroidManifest.xml" ]; then
-            flutter create . --project-name expense_tracker --platforms=android --org com.example
-          fi
-
-      - name: Set App Name to Kharch Diary
-        run: |
-          sed -i 's/android:label="[^"]*"/android:label="Kharch Diary"/g' android/app/src/main/AndroidManifest.xml
-
-      - name: Upgrade Kotlin and Configure Gradle
-        run: |
-          if [ -f "android/settings.gradle" ]; then
-            sed -i 's/id "org.jetbrains.kotlin.android" version "[^"]*"/id "org.jetbrains.kotlin.android" version "1.9.22"/g' android/settings.gradle
-            sed -i "s/id 'org.jetbrains.kotlin.android' version '[^']*'/id 'org.jetbrains.kotlin.android' version '1.9.22'/g" android/settings.gradle
-          fi
-          if [ -f "android/build.gradle" ]; then
-            sed -i "s/ext.kotlin_version = .*/ext.kotlin_version = '1.9.22'/g" android/build.gradle
-          fi
-
-      - name: Inject AdMob App ID
-        run: |
-          sed -i 's/<\/application>/<meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-8588358418138615~1083722153"\/><\/application>/g' android/app/src/main/AndroidManifest.xml
-
-      - name: Install dependencies
+      - name: Fetch Dependencies
         run: flutter pub get
 
-      - name: Generate App Icons
-        run: dart run flutter_launcher_icons
+      - name: Build Android App Bundle (.aab)
+        run: flutter build appbundle --release --no-shrink
 
-      - name: Build APK
-        run: flutter build apk --release
-
-      - name: Upload APK
+      - name: Save AAB File as Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Kharch-Diary-Release
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: KharchDiary-Release-AAB
+          path: build/app/outputs/bundle/release/*.aab
           
