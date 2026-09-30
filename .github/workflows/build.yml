@@ -22,9 +22,11 @@ jobs:
           flutter-version: '3.19.6'
           channel: 'stable'
 
-      - name: Recreate Android Project Config
+      - name: Recreate Android Project Config & Bump MinSdk
         run: |
           flutter create --project-name expense_tracker --platforms=android .
+          sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g' android/app/build.gradle || true
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle || true
           flutter pub get
 
       - name: Build Android App Bundle (.aab)
