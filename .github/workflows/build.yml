@@ -60,9 +60,23 @@ jobs:
           include ":app"
           EOF
 
-          # 3. minSdkVersion 21 set karein
+          # 3. minSdkVersion 21 set karein aur Kotlin/Java JVM target dono ko 1.8 par lock karein
           sed -i "s/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g" android/app/build.gradle || true
           sed -i "s/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g" android/app/build.gradle || true
+
+          # Append kotlinOptions jvmTarget = '1.8' to android block
+          cat << 'EOF' >> android/app/build.gradle
+
+          android {
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_1_8
+                  targetCompatibility JavaVersion.VERSION_1_8
+              }
+              kotlinOptions {
+                  jvmTarget = '1.8'
+              }
+          }
+          EOF
 
           flutter pub get
 
