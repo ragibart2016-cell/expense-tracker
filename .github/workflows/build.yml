@@ -19,25 +19,22 @@ jobs:
       - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.6'
+          flutter-version: '3.22.2'
           channel: 'stable'
 
-      - name: Configure Android Project & Force Kotlin 1.9.22
+      - name: Setup Android & Upgrade Gradle to 8.4
         run: |
           # Fresh android structure generate karein
           flutter create --project-name expense_tracker --platforms=android .
           
-          # minSdkVersion ko 21 karein
+          # Gradle wrapper ko 8.4 par set karein
+          sed -i 's/gradle-.*-all.zip/gradle-8.4-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
+          sed -i 's/gradle-.*-bin.zip/gradle-8.4-bin.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
+          
+          # minSdkVersion ko 21 set karein
           sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g' android/app/build.gradle || true
           sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle || true
           
-          # build.gradle ke andar Kotlin version 1.9.22 enforce karein
-          sed -i "s/ext.kotlin_version = '.*'/ext.kotlin_version = '1.9.22'/g" android/build.gradle || true
-          
-          # settings.gradle me agar id("org.jetbrains.kotlin.android") ho to version override karein
-          sed -i 's/id "org.jetbrains.kotlin.android" version .*/id "org.jetbrains.kotlin.android" version "1.9.22" apply false/g' android/settings.gradle || true
-          sed -i 's/id "com.android.application" version .*/id "com.android.application" version "8.1.0" apply false/g' android/settings.gradle || true
-
           flutter pub get
 
       - name: Build Android App Bundle (.aab)
