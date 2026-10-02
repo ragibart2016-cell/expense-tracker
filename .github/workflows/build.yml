@@ -27,6 +27,9 @@ jobs:
           # Fresh android structure
           flutter create --org com.rzapps --project-name kharchdiary --platforms=android .
 
+          # Committed Keystore ko android/app me copy karein
+          cp upload-keystore.jks android/app/upload-keystore.jks
+
           # 1. Gradle Wrapper 8.4
           sed -i 's/gradle-.*-all.zip/gradle-8.4-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
           sed -i 's/gradle-.*-bin.zip/gradle-8.4-bin.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
@@ -60,13 +63,7 @@ jobs:
           include ":app"
           EOF
 
-          # 3. Release Keystore generate karein
-          keytool -genkey -v -keystore android/app/upload-keystore.jks \
-            -alias upload -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass "kharchdiary123" -keypass "kharchdiary123" \
-            -dname "CN=KharchDiary, OU=Mobile, O=RZApps, L=Umri, S=UP, C=IN"
-
-          # 4. android/key.properties banayein
+          # 3. android/key.properties banayein
           cat << 'EOF' > android/key.properties
           storePassword=kharchdiary123
           keyPassword=kharchdiary123
@@ -74,7 +71,7 @@ jobs:
           storeFile=upload-keystore.jks
           EOF
 
-          # 5. android/app/build.gradle update karein signing ke sath
+          # 4. android/app/build.gradle update karein signing ke sath
           cat << 'EOF' > android/app/build.gradle
           plugins {
               id "com.android.application"
@@ -143,12 +140,4 @@ jobs:
         with:
           name: KharchDiary-Release-AAB
           path: build/app/outputs/bundle/release/*.aab
-
-      - name: Save Upload Keystore Backup (Important)
-        uses: actions/upload-artifact@v4
-        with:
-          name: KharchDiary-Upload-Keystore
-          path: |
-            android/app/upload-keystore.jks
-            android/key.properties
-            
+          
