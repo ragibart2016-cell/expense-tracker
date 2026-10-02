@@ -71,7 +71,7 @@ jobs:
           storeFile=upload-keystore.jks
           EOF
 
-          # 4. android/app/build.gradle update karein signing aur API 35 ke sath
+          # 4. android/app/build.gradle update karein API 36 ke sath
           cat << 'EOF' > android/app/build.gradle
           plugins {
               id "com.android.application"
@@ -87,7 +87,7 @@ jobs:
 
           android {
               namespace = "com.rzapps.kharchdiary"
-              compileSdk = 35
+              compileSdk = 36
               ndkVersion = flutter.ndkVersion
 
               compileOptions {
@@ -102,9 +102,9 @@ jobs:
               defaultConfig {
                   applicationId = "com.rzapps.kharchdiary"
                   minSdk = 24
-                  targetSdk = 35
-                  versionCode = 2
-                  versionName = "1.0.1"
+                  targetSdk = 36
+                  versionCode = 3
+                  versionName = "1.0.2"
               }
 
               signingConfigs {
