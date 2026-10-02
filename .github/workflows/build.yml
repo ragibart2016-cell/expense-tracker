@@ -13,25 +13,25 @@ jobs:
       - name: Setup Java JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
-          java-version: '17'
+          distribution: "zulu"
+          java-version: "17"
 
       - name: Setup Flutter SDK
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter.action@v2
         with:
-          flutter-version: '3.22.2'
-          channel: 'stable'
+          flutter-version: "3.22.2"
+          channel: "stable"
 
-      - name: Recreate Android Project & Force Modern Kotlin
+      - name: Recreate Android Project & Configure Release Signing
         run: |
-          # Fresh android structure with custom package name
+          # Fresh android structure
           flutter create --org com.rzapps --project-name kharchdiary --platforms=android .
 
           # 1. Gradle Wrapper 8.4
           sed -i 's/gradle-.*-all.zip/gradle-8.4-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
           sed -i 's/gradle-.*-bin.zip/gradle-8.4-bin.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
 
-          # 2. android/settings.gradle me modern Kotlin plugin version 1.9.22 set karein
+          # 2. settings.gradle me modern kotlin plugin version 1.9.22 set karein
           cat << 'EOF' > android/settings.gradle
           pluginManagement {
               def flutterSdkPath = {
@@ -60,21 +60,76 @@ jobs:
           include ":app"
           EOF
 
-          # 3. minSdkVersion 21 set karein aur Kotlin/Java JVM target dono ko 1.8 par lock karein
-          sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g' android/app/build.gradle || true
-          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle || true
+          # 3. Release Keystore generate karein
+          keytool -genkey -v -keystore android/app/upload-keystore.jks \
+            -alias upload -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass "kharchdiary123" -keypass "kharchdiary123" \
+            -dname "CN=KharchDiary, OU=Mobile, O=RZApps, L=Umri, S=UP, C=IN"
 
-          # Append kotlinOptions jvmTarget = '1.8' to android block
-          cat << 'EOF' >> android/app/build.gradle
+          # 4. android/key.properties banayein
+          cat << 'EOF' > android/key.properties
+          storePassword=kharchdiary123
+          keyPassword=kharchdiary123
+          keyAlias=upload
+          storeFile=upload-keystore.jks
+          EOF
+
+          # 5. android/app/build.gradle update karein signing ke sath
+          cat << 'EOF' > android/app/build.gradle
+          plugins {
+              id "com.android.application"
+              id "kotlin-android"
+              id "dev.flutter.flutter-gradle-plugin"
+          }
+
+          def keystoreProperties = new Properties()
+          def keystorePropertiesFile = rootProject.file('key.properties')
+          if (keystorePropertiesFile.exists()) {
+              keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+          }
 
           android {
+              namespace = "com.rzapps.kharchdiary"
+              compileSdk = 34
+              ndkVersion = flutter.ndkVersion
+
               compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_1_8
-                  targetCompatibility JavaVersion.VERSION_1_8
+                  sourceCompatibility = JavaVersion.VERSION_1_8
+                  targetCompatibility = JavaVersion.VERSION_1_8
               }
+
               kotlinOptions {
                   jvmTarget = '1.8'
               }
+
+              defaultConfig {
+                  applicationId = "com.rzapps.kharchdiary"
+                  minSdk = 21
+                  targetSdk = 34
+                  versionCode = 1
+                  versionName = "1.0.0"
+              }
+
+              signingConfigs {
+                  release {
+                      keyAlias = keystoreProperties['keyAlias']
+                      keyPassword = keystoreProperties['keyPassword']
+                      storeFile = keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+                      storePassword = keystoreProperties['storePassword']
+                  }
+              }
+
+              buildTypes {
+                  release {
+                      signingConfig = signingConfigs.release
+                      minifyEnabled = false
+                      shrinkResources = false
+                  }
+              }
+          }
+
+          flutter {
+              source = "../.."
           }
           EOF
 
@@ -88,4 +143,12 @@ jobs:
         with:
           name: KharchDiary-Release-AAB
           path: build/app/outputs/bundle/release/*.aab
-          
+
+      - name: Save Upload Keystore Backup (Important)
+        uses: actions/upload-artifact@v4
+        with:
+          name: KharchDiary-Upload-Keystore
+          path: |
+            android/app/upload-keystore.jks
+            android/key.properties
+            
