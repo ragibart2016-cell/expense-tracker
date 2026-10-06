@@ -71,7 +71,7 @@ jobs:
           storeFile=upload-keystore.jks
           EOF
 
-          # 4. android/app/build.gradle update karein API 36 ke sath
+          # 4. android/app/build.gradle update karein (Version 4 / 1.0.3)
           cat << 'EOF' > android/app/build.gradle
           plugins {
               id "com.android.application"
@@ -103,8 +103,8 @@ jobs:
                   applicationId = "com.rzapps.kharchdiary"
                   minSdk = 24
                   targetSdk = 36
-                  versionCode = 3
-                  versionName = "1.0.2"
+                  versionCode = 4
+                  versionName = "1.0.3"
               }
 
               signingConfigs {
@@ -129,6 +129,9 @@ jobs:
               source = "../.."
           }
           EOF
+
+          # 5. AdMob App ID ko AndroidManifest.xml me add karein
+          sed -i '/<application/a \        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-4566358418138615~1083723153"/>' android/app/src/main/AndroidManifest.xml
 
           flutter pub get
 
