@@ -34,7 +34,7 @@ jobs:
           sed -i 's/gradle-.*-all.zip/gradle-8.4-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
           sed -i 's/gradle-.*-bin.zip/gradle-8.4-bin.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
 
-          # 2. settings.gradle me modern kotlin plugin version 1.9.22 set karein
+          # 2. settings.gradle
           cat << 'EOF' > android/settings.gradle
           pluginManagement {
               def flutterSdkPath = {
@@ -130,8 +130,40 @@ jobs:
           }
           EOF
 
-          # 5. AdMob App ID ko AndroidManifest.xml me add karein
-          sed -i '/<application/a \        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-4566358418138615~1083723153"/>' android/app/src/main/AndroidManifest.xml
+          # 5. Clean AndroidManifest.xml with AdMob App ID
+          cat << 'EOF' > android/app/src/main/AndroidManifest.xml
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application
+                  android:label="kharchdiary"
+                  android:name="${applicationName}"
+                  android:icon="@mipmap/ic_launcher">
+                  <meta-data
+                      android:name="com.google.android.gms.ads.APPLICATION_ID"
+                      android:value="ca-app-pub-4566358418138615~1083723153"/>
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:launchMode="singleTop"
+                      android:taskAffinity=""
+                      android:theme="@style/LaunchTheme"
+                      android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+                      android:hardwareAccelerated="true"
+                      android:windowSoftInputMode="adjustResize">
+                      <meta-data
+                        android:name="io.flutter.embedding.android.NormalTheme"
+                        android:resource="@style/NormalTheme"
+                        />
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+                  <meta-data
+                      android:name="flutterEmbedding"
+                      android:value="2" />
+              </application>
+          </manifest>
+          EOF
 
           flutter pub get
 
