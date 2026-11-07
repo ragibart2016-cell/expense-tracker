@@ -71,7 +71,7 @@ jobs:
           storeFile=upload-keystore.jks
           EOF
 
-          # 4. android/app/build.gradle update karein (Version 4 / 1.0.3)
+          # 4. android/app/build.gradle update karein (Version 5 / 1.0.3)
           cat << 'EOF' > android/app/build.gradle
           plugins {
               id "com.android.application"
@@ -103,8 +103,8 @@ jobs:
                   applicationId = "com.rzapps.kharchdiary"
                   minSdk = 24
                   targetSdk = 36
-                  versionCode = 4
-                  versionName = "1.0.3"
+                  versionCode = 5
+                  versionName = "1.0.4"
               }
 
               signingConfigs {
