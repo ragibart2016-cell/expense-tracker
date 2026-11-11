@@ -29,7 +29,7 @@ jobs:
 
           # 2. Upgrade gradle wrapper to 8.4
           sed -i -e 's/gradle-.*-bin.zip/gradle-8.4-bin.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
-          sed -i -e 's/gradle-.*-all.zip/gradle-8.4-bin.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
+          sed -i -e 's/gradle-.*-all.zip/gradle-8.4-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
 
           # 3. Decode keystore
           echo "${{ secrets.UPLOAD_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
@@ -42,7 +42,29 @@ jobs:
           storeFile=upload-keystore.jks
           EOF
 
-          # 5. Set Kotlin 1.9.0 and AGP 8.3.2 in settings.gradle
+          # 5. Root build.gradle with proper repositories and buildscript
+          cat << 'EOF' > android/build.gradle
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+
+          rootProject.buildDir = "../build"
+          subprojects {
+              project.buildDir = "${rootProject.buildDir}/${project.name}"
+          }
+          subprojects {
+              project.evaluationDependsOn(":app")
+          }
+
+          tasks.register("clean", Delete) {
+              delete rootProject.buildDir
+          }
+          EOF
+
+          # 6. settings.gradle with Kotlin 1.9.0 & AGP 8.3.2
           cat << 'EOF' > android/settings.gradle
           pluginManagement {
               def flutterSdkPath = {
@@ -71,7 +93,7 @@ jobs:
           include ":app"
           EOF
 
-          # 6. Configure app/build.gradle
+          # 7. app/build.gradle
           cat << 'EOF' > android/app/build.gradle
           plugins {
               id "com.android.application"
@@ -135,9 +157,13 @@ jobs:
           flutter {
               source = "../.."
           }
+
+          dependencies {
+              implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.0"
+          }
           EOF
 
-          # 7. AndroidManifest.xml with AdMob App ID & generated launcher_icon
+          # 8. AndroidManifest.xml
           cat << 'EOF' > android/app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <application
