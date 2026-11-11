@@ -1,146 +1,86 @@
-name: Generate Play Store AAB
+name: Build and Sign Kharch Diary
 
 on:
   workflow_dispatch:
 
 jobs:
-  build-aab:
+  build:
+    name: Build Compliant Release AAB
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Java JDK
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Flutter SDK
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
+          flutter-version: '3.24.3'
           channel: 'stable'
+          cache: true
 
-      - name: Setup Android Project and Signing
+      - name: Generate Fresh Keystore and Upload Certificate
         run: |
-          rm -rf android
-          flutter create --org com.rzapps --project-name expense_tracker . --platforms=android
+          mkdir -p android/app
+          keytool -genkeypair \
+            -alias upload \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -keystore android/app/upload-keystore.jks \
+            -storepass "KharchDiary@2026" \
+            -keypass "KharchDiary@2026" \
+            -dname "CN=Rz Apps, OU=Mobile, O=Rz Apps, L=Bijnor, ST=UP, C=IN"
 
-          sed -i -E 's/id "org.jetbrains.kotlin.android" version "[^"]+"/id "org.jetbrains.kotlin.android" version "1.9.0"/g' android/settings.gradle
+          keytool -export -rfc \
+            -keystore android/app/upload-keystore.jks \
+            -alias upload \
+            -storepass "KharchDiary@2026" \
+            -file upload_cert.pem
 
-          if [ -f "upload-keystore.jks" ]; then
-            cp upload-keystore.jks android/app/upload-keystore.jks
-          else
-            echo "${{ secrets.UPLOAD_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
-          fi
-
-          cat << 'EOF' > android/app/build.gradle
-          plugins {
-              id "com.android.application"
-              id "kotlin-android"
-              id "dev.flutter.flutter-gradle-plugin"
-          }
-
+      - name: Configure Clean Signing in Gradle
+        run: |
+          cat << 'EOF' > android/app/build.gradle.tmp
           android {
-              namespace = "com.rzapps.kharchdiary"
-              compileSdk = 34
-              ndkVersion = flutter.ndkVersion
-
-              compileOptions {
-                  sourceCompatibility = JavaVersion.VERSION_17
-                  targetCompatibility = JavaVersion.VERSION_17
-              }
-
-              kotlinOptions {
-                  jvmTarget = '17'
-              }
-
-              defaultConfig {
-                  applicationId = "com.rzapps.kharchdiary"
-                  minSdk = 21
-                  targetSdk = 34
-                  versionCode = 9
-                  versionName = "1.0.8"
-                  multiDexEnabled = true
-              }
-
               signingConfigs {
                   release {
-                      storeFile = file('upload-keystore.jks')
-                      storePassword = "ragibart@2754"
-                      keyAlias = "upload"
-                      keyPassword = "ragibart@2754"
-                      storeType = "jks"
+                      storeFile file('upload-keystore.jks')
+                      storePassword 'KharchDiary@2026'
+                      keyAlias 'upload'
+                      keyPassword 'KharchDiary@2026'
                   }
               }
-
               buildTypes {
                   release {
-                      signingConfig = signingConfigs.release
-                      minifyEnabled = false
-                      shrinkResources = false
-                  }
-              }
-
-              packagingOptions {
-                  resources {
-                      excludes += '/META-INF/{AL2.0,LGPL2.1}'
+                      signingConfig signingConfigs.release
+                      minifyEnabled false
+                      shrinkResources false
                   }
               }
           }
-
-          flutter {
-              source = "../.."
-          }
           EOF
 
-          cat << 'EOF' > android/app/src/main/AndroidManifest.xml
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application
-                  android:label="Kharch Diary"
-                  android:name="${applicationName}"
-                  android:icon="@mipmap/launcher_icon">
-                  <meta-data
-                      android:name="com.google.android.gms.ads.APPLICATION_ID"
-                      android:value="ca-app-pub-3940256099942544~3347511713"/>
-                  <activity
-                      android:name=".MainActivity"
-                      android:exported="true"
-                      android:launchMode="singleTop"
-                      android:taskAffinity=""
-                      android:theme="@style/LaunchTheme"
-                      android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-                      android:hardwareAccelerated="true"
-                      android:windowSoftInputMode="adjustResize">
-                      <meta-data
-                        android:name="io.flutter.embedding.android.NormalTheme"
-                        android:resource="@style/NormalTheme"
-                        />
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN"/>
-                          <category android:name="android.intent.category.LAUNCHER"/>
-                      </intent-filter>
-                  </activity>
-                  <meta-data
-                      android:name="flutterEmbedding"
-                      android:value="2" />
-              </application>
-          </manifest>
-          EOF
-
-      - name: Get dependencies
+      - name: Install Flutter Dependencies
         run: flutter pub get
 
-      - name: Generate App Icons
-        run: dart run flutter_launcher_icons
-
-      - name: Build Android App Bundle (.aab)
+      - name: Build Android App Bundle (AAB)
         run: flutter build appbundle --release
 
-      - name: Upload Release AAB
+      - name: Upload Compliant AAB Bundle
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-aab
+          name: Kharch-Diary-Release-AAB
           path: build/app/outputs/bundle/release/app-release.aab
+
+      - name: Upload Play Console Certificate (.pem)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Upload-Certificate-PEM
+          path: upload_cert.pem
           
