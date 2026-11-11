@@ -1,7 +1,7 @@
 name: expense_tracker
 description: "A simple, offline daily expense tracker app built with Flutter."
-publish_to: 'none'
-version: 1.0.4+5
+publish_to: "none"
+version: 1.0.8+9
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -26,4 +26,6 @@ flutter_launcher_icons:
   android: "launcher_icon"
   ios: false
   image_path: "ic_launcher.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "ic_launcher.png"
   
