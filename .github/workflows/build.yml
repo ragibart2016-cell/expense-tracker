@@ -38,7 +38,7 @@ jobs:
             echo "${{ secrets.UPLOAD_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
           fi
 
-          # 4. Clean and exact android/app/build.gradle with explicit JKS storeType
+          # 4. Clean android/app/build.gradle with 371896 password
           cat << 'EOF' > android/app/build.gradle
           plugins {
               id "com.android.application"
@@ -72,9 +72,9 @@ jobs:
               signingConfigs {
                   release {
                       storeFile = file('upload-keystore.jks')
-                      storePassword = "${{ secrets.KEYSTORE_PASSWORD }}"
-                      keyAlias = "${{ secrets.KEY_ALIAS }}"
-                      keyPassword = "${{ secrets.KEY_PASSWORD }}"
+                      storePassword = "371896"
+                      keyAlias = "upload"
+                      keyPassword = "371896"
                       storeType = "jks"
                   }
               }
