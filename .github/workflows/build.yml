@@ -4,35 +4,35 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-bundle:
+  build-aab:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Java JDK
         uses: actions/setup-java@v4
         with:
-          distribution: "zulu"
-          java-version: "17"
+          distribution: 'zulu'
+          java-version: '17'
 
       - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.22.2"
-          channel: "stable"
+          flutter-version: '3.24.0'
+          channel: 'stable'
 
-      - name: Recreate Android Project & Configure Release Signing
+      - name: Restore Android Project & Configure Release Signing
         run: |
-          # Fresh android structure
-          flutter create --org com.rzapps --project-name kharchdiary --platforms=android .
+          # Read android directory
+          flutter create --org com.rzapps --project-name expense_tracker . --platforms=android
 
-          # Committed Keystore ko android/app me copy karein
-          cp upload-keystore.jks android/app/upload-keystore.jks
+          # Generate Keystore & publishing ak app level
+          echo "${{ secrets.UPLOAD_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
 
-          # 1. Gradle Wrapper 8.4
-          sed -i 's/gradle-.*-all.zip/gradle-8.4-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
-          sed -i 's/gradle-.*-bin.zip/gradle-8.4-bin.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
+          # 1. gradle-wrapper 8.4
+          sed -i -e 's/gradle-.*-bin.zip/gradle-8.4-bin.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
+          sed -i -e 's/gradle-.*-all.zip/gradle-8.4-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
 
           # 2. settings.gradle
           cat << 'EOF' > android/settings.gradle
@@ -55,22 +55,15 @@ jobs:
           }
 
           plugins {
-              id "dev.flutter.flutter-plugin-loader" version "1.0.0"
+              id "dev.flutter.flutter-gradle-plugin" version "1.0.0"
               id "com.android.application" version "8.3.2" apply false
-              id "org.jetbrains.kotlin.android" version "1.9.22" apply false
+              id "org.jetbrains.kotlin.android" version "1.9.0" apply false
           }
 
           include ":app"
           EOF
 
-          # 3. android/key.properties banayein
-          cat << 'EOF' > android/key.properties
-          storePassword=kharchdiary123
-          keyPassword=kharchdiary123
-          keyAlias=upload
-          storeFile=upload-keystore.jks
-          EOF
-                    # 4. android/app/build.gradle update karein (Version 6 / 1.0.5)
+          # 3. android/app/build.gradle with keystore
           cat << 'EOF' > android/app/build.gradle
           plugins {
               id "com.android.application"
@@ -86,35 +79,33 @@ jobs:
 
           android {
               namespace = "com.rzapps.kharchdiary"
-              compileSdk = 36
+              compileSdk = 34
               ndkVersion = flutter.ndkVersion
 
               compileOptions {
-                  sourceCompatibility = JavaVersion.VERSION_1_8
-                  targetCompatibility = JavaVersion.VERSION_1_8
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
               }
 
               kotlinOptions {
-                  jvmTarget = '1.8'
+                  jvmTarget = '17'
               }
 
               defaultConfig {
                   applicationId = "com.rzapps.kharchdiary"
-                  minSdk = 24
-                  targetSdk = 36
-                  versionCode = 8
-                  versionName = "1.0.7"
-                  ndk {
-                      abiFilters "armeabi-v7a", "arm64-v8a", "x86_64"
-                  }
+                  minSdk = 21
+                  targetSdk = 34
+                  versionCode = 9
+                  versionName = "1.0.8"
+                  multiDexEnabled = true
               }
 
               signingConfigs {
                   release {
-                      keyAlias = keystoreProperties['keyAlias']
-                      keyPassword = keystoreProperties['keyPassword']
-                      storeFile = keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
-                      storePassword = keystoreProperties['storePassword']
+                      storeFile = file('upload-keystore.jks')
+                      storePassword = "${{ secrets.KEYSTORE_PASSWORD }}"
+                      keyAlias = "${{ secrets.KEY_ALIAS }}"
+                      keyPassword = "${{ secrets.KEY_PASSWORD }}"
                   }
               }
 
@@ -127,8 +118,8 @@ jobs:
               }
 
               packagingOptions {
-                  jniLibs {
-                      useLegacyPackaging = true
+                  resources {
+                      excludes += '/META-INF/{AL2.0,LGPL2.1}'
                   }
               }
           }
@@ -138,13 +129,13 @@ jobs:
           }
           EOF
 
-          # 5. Clean AndroidManifest.xml with AdMob App ID
+          # 4. Clean AndroidManifest.xml with AdMob App ID
           cat << 'EOF' > android/app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <application
-                  android:label="kharchdiary"
+                  android:label="Kharch Diary"
                   android:name="${applicationName}"
-                  android:icon="@mipmap/ic_launcher">
+                  android:icon="@mipmap/launcher_icon">
                   <meta-data
                       android:name="com.google.android.gms.ads.APPLICATION_ID"
                       android:value="ca-app-pub-3940256099942544~3347511713"/>
@@ -173,8 +164,11 @@ jobs:
           </manifest>
           EOF
 
-      - name: Get Dependencies
+      - name: Get dependencies
         run: flutter pub get
+
+      - name: Generate App Icons
+        run: dart run flutter_launcher_icons
 
       - name: Build Android App Bundle (.aab)
         run: flutter build appbundle --release
@@ -182,6 +176,6 @@ jobs:
       - name: Upload Release AAB
         uses: actions/upload-artifact@v4
         with:
-          name: KharchDiary-Release-AAB
+          name: app-release-aab
           path: build/app/outputs/bundle/release/app-release.aab
           
