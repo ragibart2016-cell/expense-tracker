@@ -38,7 +38,36 @@ jobs:
           storeFile=upload-keystore.jks
           EOF
 
-          # 4. Configure app/build.gradle for signing, package name, and version
+          # 4. Set Kotlin version to 1.9.0 in settings.gradle
+          cat << 'EOF' > android/settings.gradle
+          pluginManagement {
+              def flutterSdkPath = {
+                  def properties = new Properties()
+                  file("local.properties").withInputStream { properties.load(it) }
+                  def flutterSdkPath = properties.getProperty("flutter.sdk")
+                  assert flutterSdkPath != null : "flutter.sdk not set in local.properties"
+                  return flutterSdkPath
+              }()
+
+              includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
+
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+
+          plugins {
+              id "dev.flutter.flutter-gradle-plugin" version "1.0.0" apply false
+              id "com.android.application" version "8.3.2" apply false
+              id "org.jetbrains.kotlin.android" version "1.9.0" apply false
+          }
+
+          include ":app"
+          EOF
+
+          # 5. Configure app/build.gradle
           cat << 'EOF' > android/app/build.gradle
           plugins {
               id "com.android.application"
@@ -104,7 +133,7 @@ jobs:
           }
           EOF
 
-          # 5. Clean AndroidManifest.xml with AdMob App ID & generated launcher_icon
+          # 6. AndroidManifest.xml with AdMob App ID & generated launcher_icon
           cat << 'EOF' > android/app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <application
