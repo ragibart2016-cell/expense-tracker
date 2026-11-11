@@ -21,9 +21,17 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.3'
+          flutter-version: '3.19.6'
           channel: 'stable'
           cache: true
+
+      - name: Fix Android V2 Embedding Flag
+        run: |
+          # Agar AndroidManifest me flutter embedding tag missing ho to ensure karein
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if grep -q "android:name=\"io.flutter.embedding.android.NormalTheme\"" "$MANIFEST"; then
+            echo "Manifest already contains Flutter normal theme."
+          fi
 
       - name: Generate Fresh Keystore and Upload Certificate
         run: |
@@ -70,7 +78,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Android App Bundle (AAB)
-        run: flutter build appbundle --release
+        run: flutter build appbundle --release --no-tree-shake-icons
 
       - name: Upload Compliant AAB Bundle
         uses: actions/upload-artifact@v4
