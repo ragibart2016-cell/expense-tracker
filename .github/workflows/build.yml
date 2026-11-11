@@ -28,44 +28,9 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.3'
+          flutter-version: '3.19.6'
           channel: 'stable'
           cache: true
-
-      - name: Migrate Android Embedding to V2
-        working-directory: ${{ steps.find_dir.outputs.dir }}
-        run: |
-          # 1. Update AndroidManifest.xml
-          MANIFEST=$(find . -path "*/src/main/AndroidManifest.xml" | head -n 1)
-          if [ -n "$MANIFEST" ]; then
-            if ! grep -q "flutterEmbedding" "$MANIFEST"; then
-              sed -i '/<application/a \        <meta-data android:name="flutterEmbedding" android:value="2" />' "$MANIFEST"
-            fi
-          fi
-
-          # 2. Overwrite MainActivity to strict V2 FlutterActivity
-          for file in $(find android/app/src/main -type f \( -name "MainActivity.kt" -o -name "MainActivity.java" \)); do
-            echo "Updating $file to V2 embedding..."
-            if [[ "$file" == *.kt ]]; then
-              cat << 'EOF' > "$file"
-package com.rzapps.kharchdiary
-
-import io.flutter.embedding.android.FlutterActivity
-
-class MainActivity: FlutterActivity() {
-}
-EOF
-            else
-              cat << 'EOF' > "$file"
-package com.rzapps.kharchdiary;
-
-import io.flutter.embedding.android.FlutterActivity;
-
-public class MainActivity extends FlutterActivity {
-}
-EOF
-            fi
-          done
 
       - name: Generate Fresh Keystore and Upload Certificate
         working-directory: ${{ steps.find_dir.outputs.dir }}
