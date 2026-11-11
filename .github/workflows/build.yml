@@ -25,38 +25,13 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Migrate Android Embedding to V2
+      - name: Configure Android V2 Embedding
         run: |
-          # 1. Update AndroidManifest.xml for V2 embedding
           MANIFEST="android/app/src/main/AndroidManifest.xml"
-          if ! grep -q "flutterEmbedding" "$MANIFEST"; then
+          if grep -q "android:name=\"flutterEmbedding\"" "$MANIFEST"; then
+            echo "Embedding tag already exists."
+          else
             sed -i '/<application/a \        <meta-data android:name="flutterEmbedding" android:value="2" />' "$MANIFEST"
-          fi
-
-          # 2. Convert MainActivity to modern FlutterActivity (V2)
-          MAIN_ACTIVITY_JAVA=$(find android/app/src/main/java -name "MainActivity.java" 2>/dev/null || true)
-          MAIN_ACTIVITY_KT=$(find android/app/src/main/kotlin -name "MainActivity.kt" 2>/dev/null || true)
-
-          if [ -n "$MAIN_ACTIVITY_JAVA" ]; then
-            cat << 'EOF' > "$MAIN_ACTIVITY_JAVA"
-package com.rzapps.kharchdiary;
-
-import io.flutter.embedding.android.FlutterActivity;
-
-public class MainActivity extends FlutterActivity {
-}
-EOF
-          fi
-
-          if [ -n "$MAIN_ACTIVITY_KT" ]; then
-            cat << 'EOF' > "$MAIN_ACTIVITY_KT"
-package com.rzapps.kharchdiary
-
-import io.flutter.embedding.android.FlutterActivity
-
-class MainActivity: FlutterActivity() {
-}
-EOF
           fi
 
       - name: Generate Fresh Keystore and Upload Certificate
