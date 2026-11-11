@@ -12,6 +12,14 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Locate Flutter Project Directory
+        id: find_dir
+        run: |
+          # Dhoondho pubspec.yaml kahan rakha hai
+          PROJECT_DIR=$(dirname $(find . -maxdepth 3 -name "pubspec.yaml" | head -n 1))
+          echo "Found project directory at: $PROJECT_DIR"
+          echo "dir=$PROJECT_DIR" >> $GITHUB_OUTPUT
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
@@ -26,48 +34,58 @@ jobs:
           cache: true
 
       - name: Configure Android V2 Embedding
+        working-directory: ${{ steps.find_dir.outputs.dir }}
         run: |
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-          if grep -q "android:name=\"flutterEmbedding\"" "$MANIFEST"; then
-            echo "Embedding tag already exists."
+          MANIFEST=$(find . -path "*/src/main/AndroidManifest.xml" | head -n 1)
+          if [ -n "$MANIFEST" ]; then
+            if ! grep -q "flutterEmbedding" "$MANIFEST"; then
+              sed -i '/<application/a \        <meta-data android:name="flutterEmbedding" android:value="2" />' "$MANIFEST"
+              echo "V2 embedding tag added to $MANIFEST"
+            else
+              echo "V2 embedding tag already exists."
+            fi
           else
-            sed -i '/<application/a \        <meta-data android:name="flutterEmbedding" android:value="2" />' "$MANIFEST"
+            echo "Manifest file not found, skipping."
           fi
 
       - name: Generate Fresh Keystore and Upload Certificate
+        working-directory: ${{ steps.find_dir.outputs.dir }}
         run: |
-          mkdir -p android/app
+          TARGET_DIR="android/app"
+          mkdir -p "$TARGET_DIR"
           keytool -genkeypair \
             -alias upload \
             -keyalg RSA \
             -keysize 2048 \
             -validity 10000 \
-            -keystore android/app/upload-keystore.jks \
+            -keystore "$TARGET_DIR/upload-keystore.jks" \
             -storepass "KharchDiary@2026" \
             -keypass "KharchDiary@2026" \
             -dname "CN=Rz Apps, OU=Mobile, O=Rz Apps, L=Bijnor, ST=UP, C=IN"
 
           keytool -export -rfc \
-            -keystore android/app/upload-keystore.jks \
+            -keystore "$TARGET_DIR/upload-keystore.jks" \
             -alias upload \
             -storepass "KharchDiary@2026" \
             -file upload_cert.pem
 
       - name: Install Flutter Dependencies
+        working-directory: ${{ steps.find_dir.outputs.dir }}
         run: flutter pub get
 
       - name: Build Android App Bundle (AAB)
+        working-directory: ${{ steps.find_dir.outputs.dir }}
         run: flutter build appbundle --release --no-tree-shake-icons
 
       - name: Upload Compliant AAB Bundle
         uses: actions/upload-artifact@v4
         with:
           name: Kharch-Diary-Release-AAB
-          path: build/app/outputs/bundle/release/app-release.aab
+          path: ${{ steps.find_dir.outputs.dir }}/build/app/outputs/bundle/release/app-release.aab
 
       - name: Upload Play Console Certificate (.pem)
         uses: actions/upload-artifact@v4
         with:
           name: Upload-Certificate-PEM
-          path: upload_cert.pem
+          path: ${{ steps.find_dir.outputs.dir }}/upload_cert.pem
           
