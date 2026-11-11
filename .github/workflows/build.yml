@@ -21,16 +21,42 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.6'
+          flutter-version: '3.24.3'
           channel: 'stable'
           cache: true
 
-      - name: Fix Android V2 Embedding Flag
+      - name: Migrate Android Embedding to V2
         run: |
-          # Agar AndroidManifest me flutter embedding tag missing ho to ensure karein
+          # 1. Update AndroidManifest.xml for V2 embedding
           MANIFEST="android/app/src/main/AndroidManifest.xml"
-          if grep -q "android:name=\"io.flutter.embedding.android.NormalTheme\"" "$MANIFEST"; then
-            echo "Manifest already contains Flutter normal theme."
+          if ! grep -q "flutterEmbedding" "$MANIFEST"; then
+            sed -i '/<application/a \        <meta-data android:name="flutterEmbedding" android:value="2" />' "$MANIFEST"
+          fi
+
+          # 2. Convert MainActivity to modern FlutterActivity (V2)
+          MAIN_ACTIVITY_JAVA=$(find android/app/src/main/java -name "MainActivity.java" 2>/dev/null || true)
+          MAIN_ACTIVITY_KT=$(find android/app/src/main/kotlin -name "MainActivity.kt" 2>/dev/null || true)
+
+          if [ -n "$MAIN_ACTIVITY_JAVA" ]; then
+            cat << 'EOF' > "$MAIN_ACTIVITY_JAVA"
+package com.rzapps.kharchdiary;
+
+import io.flutter.embedding.android.FlutterActivity;
+
+public class MainActivity extends FlutterActivity {
+}
+EOF
+          fi
+
+          if [ -n "$MAIN_ACTIVITY_KT" ]; then
+            cat << 'EOF' > "$MAIN_ACTIVITY_KT"
+package com.rzapps.kharchdiary
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity: FlutterActivity() {
+}
+EOF
           fi
 
       - name: Generate Fresh Keystore and Upload Certificate
@@ -51,28 +77,6 @@ jobs:
             -alias upload \
             -storepass "KharchDiary@2026" \
             -file upload_cert.pem
-
-      - name: Configure Clean Signing in Gradle
-        run: |
-          cat << 'EOF' > android/app/build.gradle.tmp
-          android {
-              signingConfigs {
-                  release {
-                      storeFile file('upload-keystore.jks')
-                      storePassword 'KharchDiary@2026'
-                      keyAlias 'upload'
-                      keyPassword 'KharchDiary@2026'
-                  }
-              }
-              buildTypes {
-                  release {
-                      signingConfig signingConfigs.release
-                      minifyEnabled false
-                      shrinkResources false
-                  }
-              }
-          }
-          EOF
 
       - name: Install Flutter Dependencies
         run: flutter pub get
