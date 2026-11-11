@@ -25,12 +25,52 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.6'
+          flutter-version: '3.24.3'
           channel: 'stable'
           cache: true
+
+      - name: Migrate Project to V2 Embedding
+        working-directory: ${{ steps.find_dir.outputs.dir }}
+        run: |
+          python3 -c "
+          import os
+
+          # 1. Update AndroidManifest.xml
+          for root, dirs, files in os.walk('.'):
+              for file in files:
+                  if file == 'AndroidManifest.xml' and 'src/main' in root:
+                      p = os.path.join(root, file)
+                      with open(p, 'r', encoding='utf-8') as f:
+                          content = f.read()
+                      if 'flutterEmbedding' not in content:
+                          tag = '<meta-data android:name=\"flutterEmbedding\" android:value=\"2\" />'
+                          content = content.replace('<application', '<application>\n        ' + tag, 1)
+                          with open(p, 'w', encoding='utf-8') as f:
+                              f.write(content)
+                          print(f'Updated {p}')
+
+          # 2. Update MainActivity.kt / MainActivity.java
+          for root, dirs, files in os.walk('.'):
+              for file in files:
+                  if file == 'MainActivity.kt':
+                      p = os.path.join(root, file)
+                      with open(p, 'w', encoding='utf-8') as f:
+                          f.write('package com.rzapps.kharchdiary\n\nimport io.flutter.embedding.android.FlutterActivity\n\nclass MainActivity: FlutterActivity() {\n}\n')
+                      print(f'Updated {p}')
+                  elif file == 'MainActivity.java':
+                      p = os.path.join(root, file)
+                      with open(p, 'w', encoding='utf-8') as f:
+                          f.write('package com.rzapps.kharchdiary;\n\nimport io.flutter.embedding.android.FlutterActivity;\n\npublic class MainActivity extends FlutterActivity {\n}\n')
+                      print(f'Updated {p}')
+          "
 
       - name: Generate Fresh Keystore and Upload Certificate
         working-directory: ${{ steps.find_dir.outputs.dir }}
