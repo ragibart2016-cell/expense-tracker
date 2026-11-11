@@ -24,62 +24,21 @@ jobs:
 
       - name: Restore Android Project & Configure Release Signing
         run: |
-          # Read android directory
+          # 1. Regenerate standard Flutter Android folder structure
           flutter create --org com.rzapps --project-name expense_tracker . --platforms=android
 
-          # Generate Keystore & publishing ak app level
+          # 2. Decode keystore
           echo "${{ secrets.UPLOAD_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
 
-          # 1. gradle-wrapper 8.4
-          sed -i -e 's/gradle-.*-bin.zip/gradle-8.4-bin.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
-          sed -i -e 's/gradle-.*-all.zip/gradle-8.4-all.zip/g' android/gradle/wrapper/gradle-wrapper.properties || true
-
-          # 2. settings.gradle
-          cat << 'EOF' > android/settings.gradle
-          pluginManagement {
-              def flutterSdkPath = {
-                  def properties = new Properties()
-                  file("local.properties").withInputStream { properties.load(it) }
-                  def flutterSdkPath = properties.getProperty("flutter.sdk")
-                  assert flutterSdkPath != null : "flutter.sdk not set in local.properties"
-                  return flutterSdkPath
-              }()
-
-              includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
-
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-              }
-          }
-
-          include ":app"
+          # 3. Create key.properties for automatic release signing
+          cat << 'EOF' > android/key.properties
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          storeFile=upload-keystore.jks
           EOF
 
-          # 2.5 android/build.gradle root plugins
-          cat << 'EOF' > android/build.gradle
-          allprojects {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
-
-          rootProject.buildDir = "../build"
-          subprojects {
-              project.buildDir = "${rootProject.buildDir}/${project.name}"
-          }
-          subprojects {
-              project.evaluationDependsOn(":app")
-          }
-
-          tasks.register("clean", Delete) {
-              delete rootProject.buildDir
-          }
-          EOF
-
-          # 3. android/app/build.gradle with keystore
+          # 4. Configure app/build.gradle for signing, package name, and version
           cat << 'EOF' > android/app/build.gradle
           plugins {
               id "com.android.application"
@@ -118,10 +77,10 @@ jobs:
 
               signingConfigs {
                   release {
-                      storeFile = file('upload-keystore.jks')
-                      storePassword = "${{ secrets.KEYSTORE_PASSWORD }}"
-                      keyAlias = "${{ secrets.KEY_ALIAS }}"
-                      keyPassword = "${{ secrets.KEY_PASSWORD }}"
+                      keyAlias = keystoreProperties['keyAlias']
+                      keyPassword = keystoreProperties['keyPassword']
+                      storeFile = keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+                      storePassword = keystoreProperties['storePassword']
                   }
               }
 
@@ -145,7 +104,7 @@ jobs:
           }
           EOF
 
-          # 4. Clean AndroidManifest.xml with AdMob App ID
+          # 5. Clean AndroidManifest.xml with AdMob App ID & generated launcher_icon
           cat << 'EOF' > android/app/src/main/AndroidManifest.xml
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <application
