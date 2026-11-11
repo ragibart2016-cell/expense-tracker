@@ -35,8 +35,7 @@ jobs:
       - name: Upgrade Project to Modern V2 Android Structure
         working-directory: ${{ steps.find_dir.outputs.dir }}
         run: |
-          # Modern Flutter v2 template generate karega bina lib code ko chu-e
-          flutter create --org com.rzapps .
+          flutter create --project-name expense_tracker --org com.rzapps .
 
       - name: Generate Fresh Keystore and Upload Certificate
         working-directory: ${{ steps.find_dir.outputs.dir }}
