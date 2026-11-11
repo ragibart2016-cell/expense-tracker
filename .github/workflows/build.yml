@@ -38,7 +38,7 @@ jobs:
             echo "${{ secrets.UPLOAD_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
           fi
 
-          # 4. Clean android/app/build.gradle with 371896 password
+          # 4. Clean android/app/build.gradle with ragibart@2754
           cat << 'EOF' > android/app/build.gradle
           plugins {
               id "com.android.application"
@@ -72,9 +72,9 @@ jobs:
               signingConfigs {
                   release {
                       storeFile = file('upload-keystore.jks')
-                      storePassword = "371896"
+                      storePassword = "ragibart@2754"
                       keyAlias = "upload"
-                      keyPassword = "371896"
+                      keyPassword = "ragibart@2754"
                       storeType = "jks"
                   }
               }
@@ -144,8 +144,5 @@ jobs:
         run: flutter build appbundle --release
 
       - name: Upload Release AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-aab
-          path: build/app/outputs/bundle/release/app-release.aab
-          
+        uses:
+        
