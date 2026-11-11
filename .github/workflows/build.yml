@@ -24,14 +24,17 @@ jobs:
 
       - name: Prepare Android Project & Signing
         run: |
-          # 1. Fresh android recreate
+          # 1. Fresh android regenerate
           rm -rf android
           flutter create --org com.rzapps --project-name expense_tracker . --platforms=android
 
-          # 2. Decode Keystore
+          # 2. Fix Kotlin version directly to 1.9.0 in settings.gradle
+          sed -i -E 's/id "org.jetbrains.kotlin.android" version "[^"]+"/id "org.jetbrains.kotlin.android" version "1.9.0"/g' android/settings.gradle
+
+          # 3. Decode Keystore
           echo "${{ secrets.UPLOAD_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
 
-          # 3. Add key.properties
+          # 4. Add key.properties
           cat << 'EOF' > android/key.properties
           storePassword=${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword=${{ secrets.KEY_PASSWORD }}
@@ -39,7 +42,29 @@ jobs:
           storeFile=upload-keystore.jks
           EOF
 
-          # 4. Inject AdMob & App Details directly into AndroidManifest without breaking Flutter
+          # 5. Link key.properties in app/build.gradle for release signing
+          sed -i '/defaultConfig {/i \
+          def keystoreProperties = new Properties()\
+          def keystorePropertiesFile = rootProject.file("key.properties")\
+          if (keystorePropertiesFile.exists()) {\
+              keystoreProperties.load(new FileInputStream(keystorePropertiesFile))\
+          }\
+          ' android/app/build.gradle
+
+          sed -i '/buildTypes {/i \
+          signingConfigs {\
+              release {\
+                  keyAlias keystoreProperties["keyAlias"]\
+                  keyPassword keystoreProperties["keyPassword"]\
+                  storeFile keystoreProperties["storeFile"] ? file(keystoreProperties["storeFile"]) : null\
+                  storePassword keystoreProperties["storePassword"]\
+              }\
+          }\
+          ' android/app/build.gradle
+
+          sed -i 's/signingConfig = signingConfigs.debug/signingConfig = signingConfigs.release/g' android/app/build.gradle
+
+          # 6. Inject AdMob & App Name into AndroidManifest
           sed -i '/<\/application>/i \        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713"/>' android/app/src/main/AndroidManifest.xml
           sed -i 's/android:label="expense_tracker"/android:label="Kharch Diary"/g' android/app/src/main/AndroidManifest.xml
 
