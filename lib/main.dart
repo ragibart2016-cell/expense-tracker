@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -11,22 +10,20 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
+final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
-Future<void> main() async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await MobileAds.instance.initialize();
   await _initNotifications();
   runApp(const RzKharchDiaryApp());
 }
 
-Future<void> _initNotifications() async {
+Future _initNotifications() async {
   tz.initializeTimeZones();
-  const AndroidInitializationSettings androidSettings =
+  const androidSettings =
       AndroidInitializationSettings('@mipmap/launcher_icon');
-  const InitializationSettings initSettings =
-      InitializationSettings(android: androidSettings);
+  const initSettings = InitializationSettings(android: androidSettings);
   await flutterLocalNotificationsPlugin.initialize(initSettings);
 
   final androidPlugin =
@@ -37,23 +34,22 @@ Future<void> _initNotifications() async {
   await _scheduleDailyReminders();
 }
 
-Future<void> _scheduleDailyReminders() async {
+Future _scheduleDailyReminders() async {
   await flutterLocalNotificationsPlugin.cancelAll();
 
-  const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+  const androidDetails = AndroidNotificationDetails(
     'daily_expense_reminder',
     'Daily Expense Reminders',
     channelDescription: 'Reminds you morning and evening to log expenses',
     importance: Importance.high,
     priority: Priority.high,
   );
-  const NotificationDetails platformDetails =
-      NotificationDetails(android: androidDetails);
+  const platformDetails = NotificationDetails(android: androidDetails);
 
   await flutterLocalNotificationsPlugin.zonedSchedule(
     101,
-    'Good Morning! ☀️',
-    'Start your day organized — log your planned budget or morning expenses in Rz Kharch Diary.',
+    'Good Morning!',
+    'Log your planned budget or morning expenses in Rz Kharch Diary.',
     _nextInstanceOfTime(9, 0),
     platformDetails,
     androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -64,8 +60,8 @@ Future<void> _scheduleDailyReminders() async {
 
   await flutterLocalNotificationsPlugin.zonedSchedule(
     102,
-    'Evening Kharch Check 📒',
-    'Don\'t forget to record today\'s income & expenses before sleeping!',
+    'Evening Kharch Check',
+    'Do not forget to record today income and expenses before sleeping!',
     _nextInstanceOfTime(20, 30),
     platformDetails,
     androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -122,7 +118,7 @@ class Entry {
     required this.date,
   });
 
-  Map<String, dynamic> toJson() => {
+  Map toJson() => {
         'id': id,
         'title': title,
         'amount': amount,
@@ -131,17 +127,17 @@ class Entry {
         'date': date.toIso8601String(),
       };
 
-  factory Entry.fromJson(Map<String, dynamic> j) => Entry(
-        id: j['id'],
-        title: j['title'],
+  factory Entry.fromJson(dynamic j) => Entry(
+        id: j['id'].toString(),
+        title: j['title'].toString(),
         amount: (j['amount'] as num).toDouble(),
-        isIncome: j['isIncome'],
-        category: j['category'] ?? 'General',
-        date: DateTime.parse(j['date']),
+        isIncome: j['isIncome'] == true,
+        category: (j['category'] ?? 'General').toString(),
+        date: DateTime.parse(j['date'].toString()),
       );
 }
 
-const Map<String, Map<String, String>> appStrings = {
+const Map appStrings = {
   'en': {
     'app_name': 'Rz Kharch Diary',
     'balance': 'Available Balance',
@@ -298,11 +294,11 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  List<Entry> _list = [];
+class _HomeScreenState extends State {
+  final List _list = [];
   String _lang = 'en';
   String _filter = 'All';
 
@@ -313,7 +309,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final String _bannerAdUnitId = 'ca-app-pub-8588358418138615/9227319870';
   final String _interstitialAdUnitId = 'ca-app-pub-8588358418138615/1801235267';
 
-  final List<String> _categories = [
+  final List _categories = [
     'General',
     'Food',
     'Travel',
@@ -324,7 +320,10 @@ class _HomeScreenState extends State<HomeScreen> {
     'Health'
   ];
 
-  String t(String key) => appStrings[_lang]?[key] ?? appStrings['en']![key]!;
+  String t(String key) {
+    final langMap = appStrings[_lang] ?? appStrings['en'];
+    return langMap[key] ?? appStrings['en'][key] ?? key;
+  }
 
   @override
   void initState() {
@@ -372,40 +371,59 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  Future<void> _loadData() async {
+  Future _loadData() async {
     final p = await SharedPreferences.getInstance();
     final s = p.getString('entries_v2');
     final savedLang = p.getString('app_lang') ?? 'en';
     setState(() {
       _lang = savedLang;
+      _list.clear();
       if (s != null) {
-        _list = List>.from(json.decode(s))
-            .map((e) => Entry.fromJson(e))
-            .toList();
+        final decoded = json.decode(s) as List;
+        for (final item in decoded) {
+          _list.add(Entry.fromJson(item));
+        }
       }
     });
   }
 
-  Future<void> _saveData() async {
+  Future _saveData() async {
     final p = await SharedPreferences.getInstance();
-    await p.setString(
-        'entries_v2', json.encode(_list.map((e) => e.toJson()).toList()));
+    final encoded = json.encode(_list.map((e) => (e as Entry).toJson()).toList());
+    await p.setString('entries_v2', encoded);
   }
 
-  Future<void> _changeLanguage(String code) async {
+  Future _changeLanguage(String code) async {
     final p = await SharedPreferences.getInstance();
     await p.setString('app_lang', code);
     setState(() => _lang = code);
   }
 
-  double get _inc =>
-      _list.where((e) => e.isIncome).fold(0.0, (a, b) => a + b.amount);
-  double get _exp =>
-      _list.where((e) => !e.isIncome).fold(0.0, (a, b) => a + b.amount);
+  double get _inc {
+    double sum = 0.0;
+    for (final item in _list) {
+      final e = item as Entry;
+      if (e.isIncome) sum += e.amount;
+    }
+    return sum;
+  }
 
-  List<Entry> get _filteredList {
-    if (_filter == 'Income') return _list.where((e) => e.isIncome).toList();
-    if (_filter == 'Expense') return _list.where((e) => !e.isIncome).toList();
+  double get _exp {
+    double sum = 0.0;
+    for (final item in _list) {
+      final e = item as Entry;
+      if (!e.isIncome) sum += e.amount;
+    }
+    return sum;
+  }
+
+  List get _filteredList {
+    if (_filter == 'Income') {
+      return _list.where((e) => (e as Entry).isIncome).toList();
+    }
+    if (_filter == 'Expense') {
+      return _list.where((e) => !(e as Entry).isIncome).toList();
+    }
     return _list;
   }
 
@@ -438,9 +456,20 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _generateAndSharePdf() async {
+  Future _generateAndSharePdf() async {
     final pdf = pw.Document();
     final dateStr = DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.now());
+
+    final rows = _list.map((item) {
+      final e = item as Entry;
+      return [
+        DateFormat('dd/MM/yyyy').format(e.date),
+        e.title,
+        e.category,
+        e.isIncome ? 'Income' : 'Expense',
+        '${e.isIncome ? '+' : '-'} ${e.amount.toStringAsFixed(2)}',
+      ];
+    }).toList();
 
     pdf.addPage(
       pw.MultiPage(
@@ -489,15 +518,7 @@ class _HomeScreenState extends State<HomeScreen> {
             headerDecoration:
                 const pw.BoxDecoration(color: PdfColors.teal800),
             cellAlignment: pw.Alignment.centerLeft,
-            data: _list.map((e) {
-              return [
-                DateFormat('dd/MM/yyyy').format(e.date),
-                e.title,
-                e.category,
-                e.isIncome ? 'Income' : 'Expense',
-                '${e.isIncome ? '+' : '-'} ${e.amount.toStringAsFixed(2)}',
-              ];
-            }).toList(),
+            data: rows,
           ),
         ],
       ),
@@ -521,8 +542,8 @@ class _HomeScreenState extends State<HomeScreen> {
         shrinkWrap: true,
         padding: const EdgeInsets.symmetric(vertical: 16),
         children: appStrings.entries.map((entry) {
-          final code = entry.key;
-          final name = entry.value['lang_name']!;
+          final code = entry.key.toString();
+          final name = entry.value['lang_name'].toString();
           return ListTile(
             leading: Icon(
               _lang == code ? Icons.radio_button_checked : Icons.radio_button_off,
@@ -613,13 +634,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
+              DropdownButtonFormField(
                 value: _categories.contains(selectedCat)
                     ? selectedCat
                     : 'General',
                 decoration: InputDecoration(
                   labelText: 'Category',
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-                items
+                      borderRadius: BorderRadius.circu
