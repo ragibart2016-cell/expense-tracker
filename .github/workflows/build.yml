@@ -203,7 +203,8 @@ jobs:
               final s = p.getString('entries_v2');
               setState(() {
                 _lang = p.getString('app_lang') ?? 'en';
-                if (s != null) _list = List>.from(json.decode(s)).map((e) => Entry.fromJson(e)).toList();
+                if (s != null) _list = (json.decode(s) as List).map((e) => Entry.fromJson(e)).toList();
+
               });
             }
 
