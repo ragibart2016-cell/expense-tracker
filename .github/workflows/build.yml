@@ -50,7 +50,7 @@ jobs:
         working-directory: ${{ steps.find_dir.outputs.dir }}
         run: |
           flutter pub get
-          if [ -f "ic_launcher.png" ]; then
+          if [ -f "ic_launcher_rz.png" ]; then
             dart run flutter_launcher_icons
           fi
 
