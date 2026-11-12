@@ -38,6 +38,331 @@ jobs:
           rm -rf android
           flutter create --project-name rz_kharch_diary --org com.rzapps .
 
+      - name: Write Complete Clean main.dart
+        working-directory: ${{ steps.find_dir.outputs.dir }}
+        run: |
+          cat << 'EOF' > lib/main.dart
+          import 'dart:convert';
+          import 'package:flutter/material.dart';
+          import 'package:intl/intl.dart';
+          import 'package:shared_preferences/shared_preferences.dart';
+          import 'package:google_mobile_ads/google_mobile_ads.dart';
+          import 'package:pdf/pdf.dart';
+          import 'package:pdf/widgets.dart' as pw;
+          import 'package:printing/printing.dart';
+          import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+          import 'package:timezone/data/latest_all.dart' as tz;
+          import 'package:timezone/timezone.dart' as tz;
+
+          final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+          void main() async {
+            WidgetsFlutterBinding.ensureInitialized();
+            await MobileAds.instance.initialize();
+            await _initNotifications();
+            runApp(const RzKharchDiaryApp());
+          }
+
+          Future<void> _initNotifications() async {
+            tz.initializeTimeZones();
+            const androidSettings = AndroidInitializationSettings('@mipmap/launcher_icon');
+            const initSettings = InitializationSettings(android: androidSettings);
+            await flutterLocalNotificationsPlugin.initialize(initSettings);
+            final androidPlugin = flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+            await androidPlugin?.requestNotificationsPermission();
+            await _scheduleDailyReminders();
+          }
+
+          Future<void> _scheduleDailyReminders() async {
+            await flutterLocalNotificationsPlugin.cancelAll();
+            const androidDetails = AndroidNotificationDetails(
+              'daily_expense_reminder',
+              'Daily Expense Reminders',
+              channelDescription: 'Reminds you morning and evening to log expenses',
+              importance: Importance.high,
+              priority: Priority.high,
+            );
+            const platformDetails = NotificationDetails(android: androidDetails);
+            await flutterLocalNotificationsPlugin.zonedSchedule(
+              101, 'Good Morning!', 'Log your planned budget or morning expenses in Rz Kharch Diary.',
+              _nextInstanceOfTime(9, 0), platformDetails,
+              androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+              uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+              matchDateTimeComponents: DateTimeComponents.time,
+            );
+            await flutterLocalNotificationsPlugin.zonedSchedule(
+              102, 'Evening Kharch Check', 'Do not forget to record today income and expenses before sleeping!',
+              _nextInstanceOfTime(20, 30), platformDetails,
+              androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+              uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+              matchDateTimeComponents: DateTimeComponents.time,
+            );
+          }
+
+          tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
+            final now = DateTime.now();
+            var scheduled = DateTime(now.year, now.month, now.day, hour, minute);
+            if (scheduled.isBefore(now)) scheduled = scheduled.add(const Duration(days: 1));
+            return tz.TZDateTime.from(scheduled, tz.local);
+          }
+
+          class RzKharchDiaryApp extends StatelessWidget {
+            const RzKharchDiaryApp({super.key});
+            @override
+            Widget build(BuildContext context) {
+              return MaterialApp(
+                debugShowCheckedModeBanner: false,
+                title: 'Rz Kharch Diary',
+                theme: ThemeData(
+                  useMaterial3: true,
+                  colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0F766E)),
+                  scaffoldBackgroundColor: const Color(0xFFF3F6F8),
+                ),
+                home: const HomeScreen(),
+              );
+            }
+          }
+
+          class Entry {
+            final String id, title, category;
+            final double amount;
+            final bool isIncome;
+            final DateTime date;
+            Entry({required this.id, required this.title, required this.amount, required this.isIncome, required this.category, required this.date});
+            Map<String, dynamic> toJson() => {'id': id, 'title': title, 'amount': amount, 'isIncome': isIncome, 'category': category, 'date': date.toIso8601String()};
+            factory Entry.fromJson(Map<String, dynamic> j) => Entry(
+              id: j['id'], title: j['title'], amount: (j['amount'] as num).toDouble(),
+              isIncome: j['isIncome'], category: j['category'] ?? 'General', date: DateTime.parse(j['date']),
+            );
+          }
+                    const Map<String, Map<String, String>> appStrings = {
+            'en': {'app_name': 'Rz Kharch Diary', 'balance': 'Available Balance', 'income': 'Income', 'expense': 'Expense', 'add_entry': 'Add Entry', 'edit_entry': 'Edit Entry', 'title_hint': 'Title (e.g., Groceries, Salary)', 'amount_hint': 'Amount (₹)', 'save': 'Save Entry', 'no_entries': 'No entries yet. Tap + to add!', 'export_pdf': 'Export PDF Report', 'privacy': 'Privacy Policy', 'lang_name': 'English'},
+            'hi': {'app_name': 'Rz खर्च डायरी', 'balance': 'कुल शेष राशि', 'income': 'आमदनी', 'expense': 'खर्च', 'add_entry': 'नया हिसाब जोड़ें', 'edit_entry': 'हिसाब बदलें', 'title_hint': 'विवरण (जैसे: राशन, सैलरी)', 'amount_hint': 'रकम (₹)', 'save': 'सेव करें', 'no_entries': 'अभी कोई हिसाब नहीं है। + दबाकर जोड़ें!', 'export_pdf': 'PDF रिपोर्ट डाउनलोड करें', 'privacy': 'प्राइवेसी पॉलिसी', 'lang_name': 'हिंदी (Hindi)'},
+            'ur': {'app_name': 'Rz خرچ ڈائری', 'balance': 'بقیہ بیلنس', 'income': 'آمدنی', 'expense': 'خرچ', 'add_entry': 'نیا اندراج کریں', 'edit_entry': 'اندراج تبدیل کریں', 'title_hint': 'تفصیل (مثلاً راشن، تنخواہ)', 'amount_hint': 'رقم (₹)', 'save': 'محفوظ کریں', 'no_entries': 'ابھی کوئی اندراج نہیں ہے۔ + دبائیں!', 'export_pdf': 'PDF رپورٹ ڈاؤن لوڈ کریں', 'privacy': 'پرائیویسی پالیسی', 'lang_name': 'اردو (Urdu)'},
+            'bn': {'app_name': 'Rz খরচ ডায়েরি', 'balance': 'বর্তমান ব্যালেন্স', 'income': 'আয়', 'expense': 'ব্যয়', 'add_entry': 'নতুন হিসাব যোগ করুন', 'edit_entry': 'হিসাব সম্পাদনা করুন', 'title_hint': 'বিবরণ (যেমন: বাজার, বেতন)', 'amount_hint': 'টাকার পরিমাণ (₹)', 'save': 'সংরক্ষণ করুন', 'no_entries': 'এখনো কোনো হিসাব নেই। + চাপুন!', 'export_pdf': 'PDF রিপোর্ট ডাউনলোড', 'privacy': 'গোপনীয়তা নীতি', 'lang_name': 'বাংলা (Bengali)'},
+            'mr': {'app_name': 'Rz खर्च डायरी', 'balance': 'उपलब्ध शिल्लक', 'income': 'उत्पन्न', 'expense': 'खर्च', 'add_entry': 'नवीन नोंद करा', 'edit_entry': 'नोंद बदला', 'title_hint': 'तपशील (उदा. किराणा, पगार)', 'amount_hint': 'रक्कम (₹)', 'save': 'जतन करा', 'no_entries': 'अद्याप कोणतीही नोंद नाही. + दाबा!', 'export_pdf': 'PDF अहवाल डाउनलोड करा', 'privacy': 'गोपनीयता धोरण', 'lang_name': 'मराठी (Marathi)'},
+            'gu': {'app_name': 'Rz ખર્ચ ડાયરી', 'balance': 'ઉપલબ્ધ બેલેન્સ', 'income': 'આવક', 'expense': 'ખર્ચ', 'add_entry': 'નવી એન્ટ્રી ઉમેરો', 'edit_entry': 'એન્ટ્રી સુધારો', 'title_hint': 'વિગત (દા.ત. કરિયાણું, પગાર)', 'amount_hint': 'રકમ (₹)', 'save': 'સેવ કરો', 'no_entries': 'હજુ સુધી કોઈ એન્ટ્રી નથી. + દબાવો!', 'export_pdf': 'PDF રિપોર્ટ ડાઉનલોડ કરો', 'privacy': 'પ્રાઇવસી પોલિસી', 'lang_name': 'ગુજરાતી (Gujarati)'},
+            'ta': {'app_name': 'Rz செலவு டைரி', 'balance': 'மீதமுள்ள இருப்பு', 'income': 'வருமானம்', 'expense': 'செலவு', 'add_entry': 'புதிய பதிவு சேர்', 'edit_entry': 'பதிவை திருத்து', 'title_hint': 'விவரம் (எ.கா. மளிகை, சம்பளம்)', 'amount_hint': 'தொகை (₹)', 'save': 'சேமி', 'no_entries': 'பதிவுகள் இல்லை. + அழுத்தவும்!', 'export_pdf': 'PDF அறிக்கை பதிவிறக்கு', 'privacy': 'தனியுரிமைக் கொள்கை', 'lang_name': 'தமிழ் (Tamil)'},
+            'te': {'app_name': 'Rz ఖర్చు డైరీ', 'balance': 'అందుబాటులో ఉన్న బ్యాలెన్స్', 'income': 'ఆదాయం', 'expense': 'ఖర్చు', 'add_entry': 'కొత్త నమోదు జోడించండి', 'edit_entry': 'నమోదు సవరించండి', 'title_hint': 'వివరాలు (ఉదా. సరుకులు, జీతం)', 'amount_hint': 'మొత్తం (₹)', 'save': 'సేవ్ చేయండి', 'no_entries': 'ఇంకా నమోదులు లేవు. + నొక్కండి!', 'export_pdf': 'PDF నివేదిక డౌన్‌లోడ్', 'privacy': 'గోప్యతా విధానం', 'lang_name': 'తెలుగు (Telugu)'},
+            'ar': {'app_name': 'Rz دفتر المصاريف', 'balance': 'الرصيد المتاح', 'income': 'الدخل', 'expense': 'المصروفات', 'add_entry': 'إضافة معاملة', 'edit_entry': 'تعديل المعاملة', 'title_hint': 'الوصف (مثل: بقالة، راتب)', 'amount_hint': 'المبلغ (₹)', 'save': 'حفظ', 'no_entries': 'لا توجد معاملات بعد. اضغط + للإضافة!', 'export_pdf': 'تصدير تقرير PDF', 'privacy': 'سياسة الخصوصية', 'lang_name': 'العربية (Arabic)'},
+            'es': {'app_name': 'Rz Diario de Gastos', 'balance': 'Saldo Disponible', 'income': 'Ingresos', 'expense': 'Gastos', 'add_entry': 'Agregar Registro', 'edit_entry': 'Editar Registro', 'title_hint': 'Título (ej. Compras, Salario)', 'amount_hint': 'Monto (₹)', 'save': 'Guardar', 'no_entries': 'Sin registros aún. ¡Toca + para agregar!', 'export_pdf': 'Exportar Reporte PDF', 'privacy': 'Política de Privacidad', 'lang_name': 'Español (Spanish)'},
+          };
+
+          class HomeScreen extends StatefulWidget {
+            const HomeScreen({super.key});
+            @override
+            State<HomeScreen> createState() => _HomeScreenState();
+          }
+
+          class _HomeScreenState extends State<HomeScreen> {
+            List<Entry> _list = [];
+            String _lang = 'en', _filter = 'All';
+            BannerAd? _bannerAd;
+            bool _isBannerReady = false;
+            InterstitialAd? _interstitialAd;
+            final _categories = ['General', 'Food', 'Travel', 'Bills', 'Shopping', 'Salary', 'Business', 'Health'];
+
+            String t(String k) => appStrings[_lang]?[k] ?? appStrings['en']![k]!;
+
+            @override
+            void initState() {
+              super.initState();
+              _loadData();
+              _bannerAd = BannerAd(
+                adUnitId: 'ca-app-pub-8588358418138615/9227319870',
+                request: const AdRequest(),
+                size: AdSize.banner,
+                listener: BannerAdListener(
+                  onAdLoaded: (_) { if (mounted) setState(() => _isBannerReady = true); },
+                  onAdFailedToLoad: (ad, _) => ad.dispose(),
+                ),
+              )..load();
+              _loadInterstitial();
+            }
+
+            void _loadInterstitial() {
+              InterstitialAd.load(
+                adUnitId: 'ca-app-pub-8588358418138615/1801235267',
+                request: const AdRequest(),
+                adLoadCallback: InterstitialAdLoadCallback(
+                  onAdLoaded: (ad) => _interstitialAd = ad,
+                  onAdFailedToLoad: (_) => _interstitialAd = null,
+                ),
+              );
+            }
+
+            @override
+            void dispose() {
+              _bannerAd?.dispose();
+              _interstitialAd?.dispose();
+              super.dispose();
+            }
+
+            Future<void> _loadData() async {
+              final p = await SharedPreferences.getInstance();
+              final s = p.getString('entries_v2');
+              setState(() {
+                _lang = p.getString('app_lang') ?? 'en';
+                if (s != null) _list = List>.from(json.decode(s)).map((e) => Entry.fromJson(e)).toList();
+              });
+            }
+
+            Future<void> _saveData() async {
+              final p = await SharedPreferences.getInstance();
+              await p.setString('entries_v2', json.encode(_list.map((e) => e.toJson()).toList()));
+            }
+
+            double get _inc => _list.where((e) => e.isIncome).fold(0.0, (a, b) => a + b.amount);
+            double get _exp => _list.where((e) => !e.isIncome).fold(0.0, (a, b) => a + b.amount);
+            List<Entry> get _filtered => _filter == 'Income' ? _list.where((e) => e.isIncome).toList() : (_filter == 'Expense' ? _list.where((e) => !e.isIncome).toList() : _list);
+
+            void _exportPdf() {
+              if (_list.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No entries to export!')));
+                return;
+              }
+              if (_interstitialAd != null) {
+                _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
+                  onAdDismissedFullScreenContent: (ad) { ad.dispose(); _loadInterstitial(); _makePdf(); },
+                  onAdFailedToShowFullScreenContent: (ad, _) { ad.dispose(); _loadInterstitial(); _makePdf(); },
+                );
+                _interstitialAd!.show();
+                _interstitialAd = null;
+              } else {
+                _makePdf();
+                _loadInterstitial();
+              }
+            }
+
+            Future<void> _makePdf() async {
+              final pdf = pw.Document();
+              pdf.addPage(pw.MultiPage(
+                pageFormat: PdfPageFormat.a4,
+                build: (_) => [
+                  pw.Header(level: 0, child: pw.Text('Rz Kharch Diary - Statement', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold))),
+                  pw.Text('Income: Rs. ${_inc.toStringAsFixed(2)}  |  Expense: Rs. ${_exp.toStringAsFixed(2)}  |  Balance: Rs. ${(_inc - _exp).toStringAsFixed(2)}'),
+                  pw.SizedBox(height: 12),
+                  pw.TableHelper.fromTextArray(
+                    headers: ['Date', 'Title', 'Category', 'Type', 'Amount'],
+                    data: _list.map((e) => [DateFormat('dd/MM/yyyy').format(e.date), e.title, e.category, e.isIncome ? 'Income' : 'Expense', '${e.isIncome ? '+' : '-'} ${e.amount.toStringAsFixed(2)}']).toList(),
+                  ),
+                ],
+              ));
+              await Printing.sharePdf(bytes: await pdf.save(), filename: 'Rz_Kharch_Diary.pdf');
+            }
+                        void _openForm({Entry? existing}) {
+              final titleCtrl = TextEditingController(text: existing?.title ?? '');
+              final amtCtrl = TextEditingController(text: existing != null ? existing.amount.toStringAsFixed(0) : '');
+              bool isIncome = existing?.isIncome ?? false;
+              String cat = existing?.category ?? 'General';
+              showModalBottomSheet(
+                context: context, isScrollControlled: true,
+                builder: (ctx) => StatefulBuilder(builder: (ctx, setM) => Padding(
+                  padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom + 20, left: 20, right: 20, top: 20),
+                  child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Text(existing == null ? t('add_entry') : t('edit_entry'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    Row(children: [
+                      Expanded(child: ChoiceChip(label: Center(child: Text(t('expense'))), selected: !isIncome, onSelected: (_) => setM(() => isIncome = false))),
+                      const SizedBox(width: 10),
+                      Expanded(child: ChoiceChip(label: Center(child: Text(t('income'))), selected: isIncome, onSelected: (_) => setM(() => isIncome = true))),
+                    ]),
+                    const SizedBox(height: 10),
+                    TextField(controller: titleCtrl, decoration: InputDecoration(labelText: t('title_hint'), border: const OutlineInputBorder())),
+                    const SizedBox(height: 10),
+                    TextField(controller: amtCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: t('amount_hint'), border: const OutlineInputBorder())),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      value: _categories.contains(cat) ? cat : 'General',
+                      decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
+                      items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                      onChanged: (v) => setM(() => cat = v ?? 'General'),
+                    ),
+                    const SizedBox(height: 14),
+                    FilledButton(
+                      style: FilledButton.styleFrom(backgroundColor: const Color(0xFF0F766E), padding: const EdgeInsets.symmetric(vertical: 14)),
+                      onPressed: () {
+                        final amt = double.tryParse(amtCtrl.text.trim()) ?? 0;
+                        if (titleCtrl.text.trim().isEmpty || amt <= 0) return;
+                        final entry = Entry(id: existing?.id ?? DateTime.now().millisecondsSinceEpoch.toString(), title: titleCtrl.text.trim(), amount: amt, isIncome: isIncome, category: cat, date: existing?.date ?? DateTime.now());
+                        setState(() {
+                          if (existing != null) { final i = _list.indexWhere((x) => x.id == existing.id); if (i != -1) _list[i] = entry; }
+                          else { _list.insert(0, entry); }
+                        });
+                        _saveData();
+                        Navigator.pop(ctx);
+                      },
+                      child: Text(t('save')),
+                    ),
+                  ]),
+                )),
+              );
+            }
+
+            @override
+            Widget build(BuildContext context) {
+              final items = _filtered;
+              return Scaffold(
+                appBar: AppBar(
+                  backgroundColor: const Color(0xFF0F766E), foregroundColor: Colors.white,
+                  title: Text(t('app_name'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                  actions: [
+                    IconButton(icon: const Icon(Icons.picture_as_pdf_rounded), onPressed: _exportPdf),
+                    IconButton(icon: const Icon(Icons.translate_rounded), onPressed: () => showModalBottomSheet(
+                      context: context,
+                      builder: (_) => ListView(shrinkWrap: true, children: appStrings.entries.map((e) => ListTile(
+                        title: Text(e.value['lang_name']!),
+                        trailing: _lang == e.key ? const Icon(Icons.check, color: Color(0xFF0F766E)) : null,
+                        onTap: () async { final p = await SharedPreferences.getInstance(); await p.setString('app_lang', e.key); setState(() => _lang = e.key); if (mounted) Navigator.pop(context); },
+                      )).toList()),
+                    )),
+                    IconButton(icon: const Icon(Icons.privacy_tip_outlined), onPressed: () => showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(title: Text(t('privacy')), content: const Text('Rz Kharch Diary stores all data locally on your device. Google AdMob is used for ads. Contact: ragibart2016@gmail.com'), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))]),
+                    )),
+                  ],
+                ),
+                body: Column(children: [
+                  Container(
+                    width: double.infinity, margin: const EdgeInsets.all(14), padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(color: const Color(0xFF0F766E), borderRadius: BorderRadius.circular(18)),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(t('balance'), style: const TextStyle(color: Colors.white70)),
+                      Text('₹ ${(_inc - _exp).toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                        Text('↑ ${t('income')}: ₹ ${_inc.toStringAsFixed(0)}', style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+                        Text('↓ ${t('expense')}: ₹ ${_exp.toStringAsFixed(0)}', style: const TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold)),
+                      ]),
+                    ]),
+                  ),
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: ['All', 'Income', 'Expense'].map((f) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: ChoiceChip(label: Text(f == 'All' ? 'All' : (f == 'Income' ? t('income') : t('expense'))), selected: _filter == f, onSelected: (_) => setState(() => _filter = f)),
+                  )).toList()),
+                  Expanded(child: items.isEmpty ? Center(child: Text(t('no_entries'))) : ListView.builder(
+                    padding: const EdgeInsets.all(12), itemCount: items.length,
+                    itemBuilder: (_, i) {
+                      final e = items[i];
+                      return Card(child: ListTile(
+                        onTap: () => _openForm(existing: e),
+                        title: Text(e.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text('${e.category} • ${DateFormat('dd MMM').format(e.date)}'),
+                        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Text('${e.isIncome ? '+' : '-'} ₹${e.amount.toStringAsFixed(0)}', style: TextStyle(fontWeight: FontWeight.bold, color: e.isIncome ? Colors.green : Colors.red)),
+                          IconButton(icon: const Icon(Icons.delete_outline, size: 20), onPressed: () { setState(() => _list.removeWhere((x) => x.id == e.id)); _saveData(); }),
+                        ]),
+                      ));
+                    },
+                  )),
+                  if (_isBannerReady && _bannerAd != null) SizedBox(width: _bannerAd!.size.width.toDouble(), height: _bannerAd!.size.height.toDouble(), child: AdWidget(ad: _bannerAd!)),
+                ]),
+                floatingActionButton: FloatingActionButton.extended(backgroundColor: const Color(0xFF0F766E), foregroundColor: Colors.white, onPressed: () => _openForm(), icon: const Icon(Icons.add), label: Text(t('add_entry'))),
+              );
+            }
+          }
+          EOF
+
       - name: Configure AndroidManifest for Ads, Notifications & App Name
         working-directory: ${{ steps.find_dir.outputs.dir }}
         run: |
