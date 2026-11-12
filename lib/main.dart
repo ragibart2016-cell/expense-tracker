@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -13,75 +14,60 @@ import 'package:timezone/timezone.dart' as tz;
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
-Future<void> initNotifications() async {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await MobileAds.instance.initialize();
+  await _initNotifications();
+  runApp(const RzKharchDiaryApp());
+}
+
+Future<void> _initNotifications() async {
   tz.initializeTimeZones();
-  try {
-    tz.setLocalLocation(tz.getLocation('Asia/Kolkata'));
-  } catch (_) {}
+  const AndroidInitializationSettings androidSettings =
+      AndroidInitializationSettings('@mipmap/launcher_icon');
+  const InitializationSettings initSettings =
+      InitializationSettings(android: androidSettings);
+  await flutterLocalNotificationsPlugin.initialize(initSettings);
 
-  const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
-
-  const InitializationSettings initializationSettings = InitializationSettings(
-    android: initializationSettingsAndroid,
-  );
-
-  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
-
-  final androidPlugin = flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<
+  final androidPlugin =
+      flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
   await androidPlugin?.requestNotificationsPermission();
 
-  final prefs = await SharedPreferences.getInstance();
-  final enabled = prefs.getBool('daily_reminders') ?? true;
-  if (enabled) {
-    await scheduleDailyReminders();
-  }
+  await _scheduleDailyReminders();
 }
 
-tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
-  final now = tz.TZDateTime.now(tz.local);
-  var scheduledDate =
-      tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
-  if (scheduledDate.isBefore(now)) {
-    scheduledDate = scheduledDate.add(const Duration(days: 1));
-  }
-  return scheduledDate;
-}
-
-Future<void> scheduleDailyReminders() async {
+Future<void> _scheduleDailyReminders() async {
   await flutterLocalNotificationsPlugin.cancelAll();
 
-  const androidDetails = AndroidNotificationDetails(
-    'rz_kharch_daily_reminder',
+  const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    'daily_expense_reminder',
     'Daily Expense Reminders',
-    channelDescription: 'Morning and evening reminders to log daily expenses',
+    channelDescription: 'Reminds you morning and evening to log expenses',
     importance: Importance.high,
     priority: Priority.high,
   );
-  const details = NotificationDetails(android: androidDetails);
+  const NotificationDetails platformDetails =
+      NotificationDetails(android: androidDetails);
 
-  // Morning 9:00 AM Reminder
   await flutterLocalNotificationsPlugin.zonedSchedule(
     101,
-    'Rz Kharch Diary - Good Morning! ☀️',
-    'Aaj ka budget plan karein aur naye kharch note karein.',
+    'Good Morning! ☀️',
+    'Start your day organized — log your planned budget or morning expenses in Rz Kharch Diary.',
     _nextInstanceOfTime(9, 0),
-    details,
+    platformDetails,
     androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
     uiLocalNotificationDateInterpretation:
         UILocalNotificationDateInterpretation.absoluteTime,
     matchDateTimeComponents: DateTimeComponents.time,
   );
 
-  // Evening 8:30 PM Reminder
   await flutterLocalNotificationsPlugin.zonedSchedule(
     102,
-    'Rz Kharch Diary - Daily Hisaab 📝',
-    'Aaj ka kharcha likha kya? Abhi Rz Kharch Diary mein entry karein!',
+    'Evening Kharch Check 📒',
+    'Don\'t forget to record today\'s income & expenses before sleeping!',
     _nextInstanceOfTime(20, 30),
-    details,
+    platformDetails,
     androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
     uiLocalNotificationDateInterpretation:
         UILocalNotificationDateInterpretation.absoluteTime,
@@ -89,322 +75,290 @@ Future<void> scheduleDailyReminders() async {
   );
 }
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  MobileAds.instance.initialize();
-  await initNotifications();
-  runApp(const MaterialApp(
-    title: 'Rz Kharch Diary',
-    debugShowCheckedModeBanner: false,
-    home: SplashScreen(),
-  ));
+tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
+  final now = DateTime.now();
+  var scheduled = DateTime(now.year, now.month, now.day, hour, minute);
+  if (scheduled.isBefore(now)) {
+    scheduled = scheduled.add(const Duration(days: 1));
+  }
+  return tz.TZDateTime.from(scheduled, tz.local);
 }
 
-// Multi-language dictionary
-const Map<String, Map<String, String>> appStrings = {
-  'hi': {
-    'app_name': 'Rz Kharch Diary',
-    'balance': 'बचा हुआ बैलेंस',
-    'income': 'कमाई',
-    'expense': 'खर्च',
-    'search': 'सर्च करें...',
-    'all': 'सभी',
-    'empty': 'कोई लेन-देन नहीं मिला!\n+ दबाकर जोड़ें।',
-    'new_tx': 'नया लेन-देन',
-    'amount': 'रकम (₹) *',
-    'desc': 'विवरण (खाली छोड़ने पर कैटिगरी)',
-    'cat': 'कैटिगरी',
-    'mode': 'पेमेंट मोड',
-    'save': 'सेव करें',
-    'details': 'लेन-देन का पूरा ब्योरा',
-    'delete': 'हटाएँ (Delete)',
-    'select_lang': 'भाषा चुनें (Select Language)',
-    'reminder_on': 'सुबह (9:00 AM) और शाम (8:30 PM) रिमाइंडर चालू है 🔔',
-    'reminder_off': 'डेली नोटिफिकेशन रिमाइंडर बंद है 🔕',
-    'no_data_pdf': 'PDF बनाने के लिए पहले कोई लेन-देन जोड़ें!',
-  },
-  'en': {
-    'app_name': 'Rz Kharch Diary',
-    'balance': 'Remaining Balance',
-    'income': 'Income',
-    'expense': 'Expense',
-    'search': 'Search transactions...',
-    'all': 'All',
-    'empty': 'No transactions found!\nTap + to add.',
-    'new_tx': 'New Transaction',
-    'amount': 'Amount (₹) *',
-    'desc': 'Note (defaults to category if empty)',
-    'cat': 'Category',
-    'mode': 'Payment Mode',
-    'save': 'Save Entry',
-    'details': 'Transaction Details',
-    'delete': 'Delete Entry',
-    'select_lang': 'Select Language',
-    'reminder_on': 'Daily Morning (9 AM) & Evening (8:30 PM) Reminder ON 🔔',
-    'reminder_off': 'Daily Notification Reminders OFF 🔕',
-    'no_data_pdf': 'Add at least one transaction to export PDF!',
-  },
-  'ur': {
-    'app_name': 'Rz Kharch Diary',
-    'balance': 'بقیہ بیلنس',
-    'income': 'آمدنی',
-    'expense': 'خرچ',
-    'search': 'تلاش کریں...',
-    'all': 'سبھی',
-    'empty': 'کوئی لین دین نہیں ملا!\n+ دبا کر شامل کریں۔',
-    'new_tx': 'نیا لین دین',
-    'amount': 'رقم (₹) *',
-    'desc': 'تفصیل (خالی چھوڑنے پر کیٹیگری)',
-    'cat': 'کیٹیگری',
-    'mode': 'ادائیگی کا طریقہ',
-    'save': 'محفوظ کریں',
-    'details': 'لین دین کی مکمل تفصیل',
-    'delete': 'حذف کریں (Delete)',
-    'select_lang': 'زبان منتخب کریں',
-    'reminder_on': 'صبح 9 بجے اور شام 8:30 بجے ریمائنڈر آن ہے 🔔',
-    'reminder_off': 'ڈیلی ریمائنڈر بند ہے 🔕',
-    'no_data_pdf': 'PDF بنانے کے لیے پہلے کوئی اندراج کریں!',
-  },
-  'mr': {
-    'app_name': 'Rz Kharch Diary',
-    'balance': 'शिल्लक रक्कम',
-    'income': 'उत्पन्न',
-    'expense': 'खर्च',
-    'search': 'शोधा...',
-    'all': 'सर्व',
-    'empty': 'कोणताही व्यवहार सापडला नाही!\n+ दाबून जोडा.',
-    'new_tx': 'नवीन व्यवहार',
-    'amount': 'रक्कम (₹) *',
-    'desc': 'तपशील',
-    'cat': 'श्रेणी',
-    'mode': 'पेमेंट पद्धत',
-    'save': 'जतन करा',
-    'details': 'व्यवहाराचा तपशील',
-    'delete': 'हटवा (Delete)',
-    'select_lang': 'भाषा निवडा',
-    'reminder_on': 'सकाळी 9 आणि संध्याकाळी 8:30 रिमाइंडर चालू 🔔',
-    'reminder_off': 'रिमाइंडर बंद आहे 🔕',
-    'no_data_pdf': 'PDF साठी आधी व्यवहार जोडा!',
-  },
-  'gu': {
-    'app_name': 'Rz Kharch Diary',
-    'balance': 'બાકી બેલેન્સ',
-    'income': 'આવક',
-    'expense': 'ખર્ચ',
-    'search': 'શોધો...',
-    'all': 'બધા',
-    'empty': 'કોઈ વ્યવહાર મળ્યો નથી!\n+ દબાવીને ઉમેરો.',
-    'new_tx': 'નવો વ્યવહાર',
-    'amount': 'રકમ (₹) *',
-    'desc': 'વિગત',
-    'cat': 'કેટેગરી',
-    'mode': 'પેમેન્ટ મોડ',
-    'save': 'સેવ કરો',
-    'details': 'વ્યવહારની સંપૂર્ણ વિગત',
-    'delete': 'કાઢી નાખો (Delete)',
-    'select_lang': 'ભાષા પસંદ કરો',
-    'reminder_on': 'સવારે 9 અને સાંજે 8:30 રિમાઇન્ડર ચાલુ છે 🔔',
-    'reminder_off': 'રિમાઇન્ડર બંધ છે 🔕',
-    'no_data_pdf': 'PDF માટે પહેલા વ્યવહાર ઉમેરો!',
-  },
-  'bn': {
-    'app_name': 'Rz Kharch Diary',
-    'balance': 'অবশিষ্ট ব্যালেন্স',
-    'income': 'আয়',
-    'expense': 'খরচ',
-    'search': 'খুঁজুন...',
-    'all': 'সব',
-    'empty': 'কোনো লেনদেন পাওয়া যায়নি!\n+ চেপে যোগ করুন।',
-    'new_tx': 'নতুন লেনদেন',
-    'amount': 'পরিমাণ (₹) *',
-    'desc': 'বিবরণ',
-    'cat': 'বিভাগ',
-    'mode': 'পেমেন্ট মাধ্যম',
-    'save': 'সেভ করুন',
-    'details': 'লেনদেনের বিস্তারিত',
-    'delete': 'মুছে ফেলুন',
-    'select_lang': 'ভাষা নির্বাচন করুন',
-    'reminder_on': 'সকাল ৯টা ও রাত ৮:৩০ রিমাইন্ডার চালু 🔔',
-    'reminder_off': 'রিমাইন্ডার বন্ধ আছে 🔕',
-    'no_data_pdf': 'PDF এর জন্য আগে লেনদেন যোগ করুন!',
-  },
-  'ta': {
-    'app_name': 'Rz Kharch Diary',
-    'balance': 'மீதமுள்ள இருப்பு',
-    'income': 'வருமானம்',
-    'expense': 'செலவு',
-    'search': 'தேடுக...',
-    'all': 'அனைத்தும்',
-    'empty': 'பரிவர்த்தனைகள் இல்லை!\n+ அழுத்தி சேர்க்கவும்.',
-    'new_tx': 'புதிய பரிவர்த்தனை',
-    'amount': 'தொகை (₹) *',
-    'desc': 'விவரம்',
-    'cat': 'வகை',
-    'mode': 'கட்டண முறை',
-    'save': 'சேமி',
-    'details': 'பரிவர்த்தனை விவரங்கள்',
-    'delete': 'நீக்கு',
-    'select_lang': 'மொழியைத் தேர்ந்தெடுக்கவும்',
-    'reminder_on': 'காலை 9 & இரவு 8:30 நினைவூட்டல் இயக்கப்பட்டது 🔔',
-    'reminder_off': 'நினைவூட்டல் நிறுத்தப்பட்டது 🔕',
-    'no_data_pdf': 'PDF உருவாக்க முதலில் பதிவைச் சேர்க்கவும்!',
-  },
-  'te': {
-    'app_name': 'Rz Kharch Diary',
-    'balance': 'మిగిలిన బ్యాలెన్స్',
-    'income': 'ఆదాయం',
-    'expense': 'ఖర్చు',
-    'search': 'వెతకండి...',
-    'all': 'అన్నీ',
-    'empty': 'లావాదేవీలు లేవు!\n+ నొక్కి జోడించండి.',
-    'new_tx': 'కొత్త లావాదేవీ',
-    'amount': 'మొత్తం (₹) *',
-    'desc': 'వివరాలు',
-    'cat': 'వర్గం',
-    'mode': 'చెల్లింపు విధానం',
-    'save': 'సేవ్ చేయండి',
-    'details': 'లావాదేవీ పూర్తి వివరాలు',
-    'delete': 'తొలగించు',
-    'select_lang': 'భాషను ఎంచుకోండి',
-    'reminder_on': 'ఉదయం 9 & రాత్రి 8:30 రిమైండర్ ఆన్‌లో ఉంది 🔔',
-    'reminder_off': 'రిమైండర్ ఆఫ్‌లో ఉంది 🔕',
-    'no_data_pdf': 'PDF కోసం ముందుగా లావాదేవీని జోడించండి!',
-  },
-};
-
-class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
-  @override
-  State<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _c;
-  late Animation<double> _a;
-
-  @override
-  void initState() {
-    super.initState();
-    _c = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 700))
-      ..repeat(reverse: true);
-    _a = Tween<double>(begin: 0.4, end: 1.0)
-        .animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut));
-    Future.delayed(const Duration(milliseconds: 1400), () {
-      if (mounted) {
-        Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (_) => const HomeScreen()));
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
+class RzKharchDiaryApp extends StatelessWidget {
+  const RzKharchDiaryApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: FadeTransition(
-          opacity: _a,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 90,
-                height: 90,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0F766E),
-                  borderRadius: BorderRadius.circular(22),
-                  boxShadow: [
-                    BoxShadow(
-                        color: const Color(0xFF0F766E).withOpacity(0.3),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6))
-                  ],
-                ),
-                child: const Icon(Icons.account_balance_wallet_rounded,
-                    color: Colors.white, size: 50),
-              ),
-              const SizedBox(height: 16),
-              const Text('Rz Kharch Diary',
-                  style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0F766E))),
-            ],
-          ),
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Rz Kharch Diary',
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF0F766E),
+          brightness: Brightness.light,
         ),
+        scaffoldBackgroundColor: const Color(0xFFF3F6F8),
       ),
+      home: const HomeScreen(),
     );
   }
 }
 
+class Entry {
+  final String id;
+  final String title;
+  final double amount;
+  final bool isIncome;
+  final String category;
+  final DateTime date;
+
+  Entry({
+    required this.id,
+    required this.title,
+    required this.amount,
+    required this.isIncome,
+    required this.category,
+    required this.date,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'amount': amount,
+        'isIncome': isIncome,
+        'category': category,
+        'date': date.toIso8601String(),
+      };
+
+  factory Entry.fromJson(Map<String, dynamic> j) => Entry(
+        id: j['id'],
+        title: j['title'],
+        amount: (j['amount'] as num).toDouble(),
+        isIncome: j['isIncome'],
+        category: j['category'] ?? 'General',
+        date: DateTime.parse(j['date']),
+      );
+}
+
+const Map<String, Map<String, String>> appStrings = {
+  'en': {
+    'app_name': 'Rz Kharch Diary',
+    'balance': 'Available Balance',
+    'income': 'Income',
+    'expense': 'Expense',
+    'add_entry': 'Add Entry',
+    'edit_entry': 'Edit Entry',
+    'title_hint': 'Title (e.g., Groceries, Salary)',
+    'amount_hint': 'Amount (₹)',
+    'save': 'Save Entry',
+    'no_entries': 'No entries yet. Tap + to add!',
+    'export_pdf': 'Export PDF Report',
+    'privacy': 'Privacy Policy',
+    'lang_name': 'English',
+  },
+  'hi': {
+    'app_name': 'Rz खर्च डायरी',
+    'balance': 'कुल शेष राशि',
+    'income': 'आमदनी',
+    'expense': 'खर्च',
+    'add_entry': 'नया हिसाब जोड़ें',
+    'edit_entry': 'हिसाब बदलें',
+    'title_hint': 'विवरण (जैसे: राशन, सैलरी)',
+    'amount_hint': 'रकम (₹)',
+    'save': 'सेव करें',
+    'no_entries': 'अभी कोई हिसाब नहीं है। + दबाकर जोड़ें!',
+    'export_pdf': 'PDF रिपोर्ट डाउनलोड करें',
+    'privacy': 'प्राइवेसी पॉलिसी',
+    'lang_name': 'हिंदी (Hindi)',
+  },
+  'ur': {
+    'app_name': 'Rz خرچ ڈائری',
+    'balance': 'بقیہ بیلنس',
+    'income': 'آمدنی',
+    'expense': 'خرچ',
+    'add_entry': 'نیا اندراج کریں',
+    'edit_entry': 'اندراج تبدیل کریں',
+    'title_hint': 'تفصیل (مثلاً راشن، تنخواہ)',
+    'amount_hint': 'رقم (₹)',
+    'save': 'محفوظ کریں',
+    'no_entries': 'ابھی کوئی اندراج نہیں ہے۔ + دبائیں!',
+    'export_pdf': 'PDF رپورٹ ڈاؤن لوڈ کریں',
+    'privacy': 'پرائیویسی پالیسی',
+    'lang_name': 'اردو (Urdu)',
+  },
+  'bn': {
+    'app_name': 'Rz খরচ ডায়েরি',
+    'balance': 'বর্তমান ব্যালেন্স',
+    'income': 'আয়',
+    'expense': 'ব্যয়',
+    'add_entry': 'নতুন হিসাব যোগ করুন',
+    'edit_entry': 'হিসাব সম্পাদনা করুন',
+    'title_hint': 'বিবরণ (যেমন: বাজার, বেতন)',
+    'amount_hint': 'টাকার পরিমাণ (₹)',
+    'save': 'সংরক্ষণ করুন',
+    'no_entries': 'এখনো কোনো হিসাব নেই। + চাপুন!',
+    'export_pdf': 'PDF রিপোর্ট ডাউনলোড',
+    'privacy': 'গোপনীয়তা নীতি',
+    'lang_name': 'বাংলা (Bengali)',
+  },
+  'mr': {
+    'app_name': 'Rz खर्च डायरी',
+    'balance': 'उपलब्ध शिल्लक',
+    'income': 'उत्पन्न',
+    'expense': 'खर्च',
+    'add_entry': 'नवीन नोंद करा',
+    'edit_entry': 'नोंद बदला',
+    'title_hint': 'तपशील (उदा. किराणा, पगार)',
+    'amount_hint': 'रक्कम (₹)',
+    'save': 'जतन करा',
+    'no_entries': 'अद्याप कोणतीही नोंद नाही. + दाबा!',
+    'export_pdf': 'PDF अहवाल डाउनलोड करा',
+    'privacy': 'गोपनीयता धोरण',
+    'lang_name': 'मराठी (Marathi)',
+  },
+  'gu': {
+    'app_name': 'Rz ખર્ચ ડાયરી',
+    'balance': 'ઉપલબ્ધ બેલેન્સ',
+    'income': 'આવક',
+    'expense': 'ખર્ચ',
+    'add_entry': 'નવી એન્ટ્રી ઉમેરો',
+    'edit_entry': 'એન્ટ્રી સુધારો',
+    'title_hint': 'વિગત (દા.ત. કરિયાણું, પગાર)',
+    'amount_hint': 'રકમ (₹)',
+    'save': 'સેવ કરો',
+    'no_entries': 'હજુ સુધી કોઈ એન્ટ્રી નથી. + દબાવો!',
+    'export_pdf': 'PDF રિપોર્ટ ડાઉનલોડ કરો',
+    'privacy': 'પ્રાઇવસી પોલિસી',
+    'lang_name': 'ગુજરાતી (Gujarati)',
+  },
+  'ta': {
+    'app_name': 'Rz செலவு டைரி',
+    'balance': 'மீதமுள்ள இருப்பு',
+    'income': 'வருமானம்',
+    'expense': 'செலவு',
+    'add_entry': 'புதிய பதிவு சேர்',
+    'edit_entry': 'பதிவை திருத்து',
+    'title_hint': 'விவரம் (எ.கா. மளிகை, சம்பளம்)',
+    'amount_hint': 'தொகை (₹)',
+    'save': 'சேமி',
+    'no_entries': 'பதிவுகள் இல்லை. + அழுத்தவும்!',
+    'export_pdf': 'PDF அறிக்கை பதிவிறக்கு',
+    'privacy': 'தனியுரிமைக் கொள்கை',
+    'lang_name': 'தமிழ் (Tamil)',
+  },
+  'te': {
+    'app_name': 'Rz ఖర్చు డైరీ',
+    'balance': 'అందుబాటులో ఉన్న బ్యాలెన్స్',
+    'income': 'ఆదాయం',
+    'expense': 'ఖర్చు',
+    'add_entry': 'కొత్త నమోదు జోడించండి',
+    'edit_entry': 'నమోదు సవరించండి',
+    'title_hint': 'వివరాలు (ఉదా. సరుకులు, జీతం)',
+    'amount_hint': 'మొత్తం (₹)',
+    'save': 'సేవ్ చేయండి',
+    'no_entries': 'ఇంకా నమోదులు లేవు. + నొక్కండి!',
+    'export_pdf': 'PDF నివేదిక డౌన్‌లోడ్',
+    'privacy': 'గోప్యతా విధానం',
+    'lang_name': 'తెలుగు (Telugu)',
+  },
+  'ar': {
+    'app_name': 'Rz دفتر المصاريف',
+    'balance': 'الرصيد المتاح',
+    'income': 'الدخل',
+    'expense': 'المصروفات',
+    'add_entry': 'إضافة معاملة',
+    'edit_entry': 'تعديل المعاملة',
+    'title_hint': 'الوصف (مثل: بقالة، راتب)',
+    'amount_hint': 'المبلغ (₹)',
+    'save': 'حفظ',
+    'no_entries': 'لا توجد معاملات بعد. اضغط + للإضافة!',
+    'export_pdf': 'تصدير تقرير PDF',
+    'privacy': 'سياسة الخصوصية',
+    'lang_name': 'العربية (Arabic)',
+  },
+  'es': {
+    'app_name': 'Rz Diario de Gastos',
+    'balance': 'Saldo Disponible',
+    'income': 'Ingresos',
+    'expense': 'Gastos',
+    'add_entry': 'Agregar Registro',
+    'edit_entry': 'Editar Registro',
+    'title_hint': 'Título (ej. Compras, Salario)',
+    'amount_hint': 'Monto (₹)',
+    'save': 'Guardar',
+    'no_entries': 'Sin registros aún. ¡Toca + para agregar!',
+    'export_pdf': 'Exportar Reporte PDF',
+    'privacy': 'Política de Privacidad',
+    'lang_name': 'Español (Spanish)',
+  },
+};
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List> _list = [];
-  String _query = '';
-  String _filter = 'ALL';
-  String _lang = 'hi';
-  bool _remindersEnabled = true;
+  List<Entry> _list = [];
+  String _lang = 'en';
+  String _filter = 'All';
 
-  BannerAd? _banner;
-  bool _adReady = false;
+  BannerAd? _bannerAd;
+  bool _isBannerReady = false;
   InterstitialAd? _interstitialAd;
 
-  final _cats = [
-    {'name': 'राशन / ग्रॉसरी', 'icon': Icons.shopping_basket},
-    {'name': 'खाना / होटल', 'icon': Icons.restaurant},
-    {'name': 'पेट्रोल / यात्रा', 'icon': Icons.directions_car},
-    {'name': 'बिल / रिचार्ज', 'icon': Icons.receipt_long},
-    {'name': 'शॉपिंग / कपड़े', 'icon': Icons.shopping_bag},
-    {'name': 'कमाई / सैलरी', 'icon': Icons.account_balance_wallet},
-    {'name': 'अन्य खर्च', 'icon': Icons.category},
-  ];
-  final _modes = ['UPI / ऑनलाइन', 'नकद (Cash)', 'बैंक / कार्ड'];
+  final String _bannerAdUnitId = 'ca-app-pub-8588358418138615/9227319870';
+  final String _interstitialAdUnitId = 'ca-app-pub-8588358418138615/1801235267';
 
-  String tr(String key) => appStrings[_lang]?[key] ?? appStrings['hi']![key]!;
+  final List<String> _categories = [
+    'General',
+    'Food',
+    'Travel',
+    'Bills',
+    'Shopping',
+    'Salary',
+    'Business',
+    'Health'
+  ];
+
+  String t(String key) => appStrings[_lang]?[key] ?? appStrings['en']![key]!;
 
   @override
   void initState() {
     super.initState();
-    _load();
-    _initAd();
+    _loadData();
+    _loadBannerAd();
     _loadInterstitialAd();
   }
 
-  void _initAd() {
-    _banner = BannerAd(
-      adUnitId: 'ca-app-pub-8588358418138615/8714800160',
-      size: AdSize.banner,
+  void _loadBannerAd() {
+    _bannerAd = BannerAd(
+      adUnitId: _bannerAdUnitId,
       request: const AdRequest(),
+      size: AdSize.banner,
       listener: BannerAdListener(
-        onAdLoaded: (_) => setState(() => _adReady = true),
-        onAdFailedToLoad: (ad, _) => ad.dispose(),
+        onAdLoaded: (_) {
+          if (mounted) setState(() => _isBannerReady = true);
+        },
+        onAdFailedToLoad: (ad, err) {
+          ad.dispose();
+        },
       ),
     )..load();
   }
 
   void _loadInterstitialAd() {
     InterstitialAd.load(
-      // Google Test Interstitial Ad Unit ID (Safe for Play Console review; replace with your real Interstitial ID once live)
-      adUnitId: 'ca-app-pub-3940256099942544/1033173712',
+      adUnitId: _interstitialAdUnitId,
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
           _interstitialAd = ad;
         },
-        onAdFailedToLoad: (_) {
+        onAdFailedToLoad: (err) {
           _interstitialAd = null;
         },
       ),
@@ -413,109 +367,53 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    _banner?.dispose();
+    _bannerAd?.dispose();
     _interstitialAd?.dispose();
     super.dispose();
   }
 
-  Future<void> _load() async {
+  Future<void> _loadData() async {
     final p = await SharedPreferences.getInstance();
-    final s = p.getString('expenses_data');
-    final savedLang = p.getString('app_lang') ?? 'hi';
-    final rem = p.getBool('daily_reminders') ?? true;
+    final s = p.getString('entries_v2');
+    final savedLang = p.getString('app_lang') ?? 'en';
     setState(() {
       _lang = savedLang;
-      _remindersEnabled = rem;
       if (s != null) {
-        _list = List>.from(json.decode(s)).map((m) {
-          m['type'] = m['type'] ?? 'EXPENSE';
-          m['cat'] = m['cat'] ?? m['category'] ?? 'अन्य खर्च';
-          m['mode'] = m['mode'] ?? m['paymentMode'] ?? 'नकद (Cash)';
-          return m;
-        }).toList();
+        _list = List>.from(json.decode(s))
+            .map((e) => Entry.fromJson(e))
+            .toList();
       }
     });
   }
 
-  Future<void> _save() async {
+  Future<void> _saveData() async {
     final p = await SharedPreferences.getInstance();
-    await p.setString('expenses_data', json.encode(_list));
+    await p.setString(
+        'entries_v2', json.encode(_list.map((e) => e.toJson()).toList()));
   }
 
-  Future<void> _changeLang(String code) async {
+  Future<void> _changeLanguage(String code) async {
     final p = await SharedPreferences.getInstance();
     await p.setString('app_lang', code);
     setState(() => _lang = code);
   }
 
-  Future<void> _toggleReminders() async {
-    final p = await SharedPreferences.getInstance();
-    final nextVal = !_remindersEnabled;
-    await p.setBool('daily_reminders', nextVal);
-    setState(() => _remindersEnabled = nextVal);
+  double get _inc =>
+      _list.where((e) => e.isIncome).fold(0.0, (a, b) => a + b.amount);
+  double get _exp =>
+      _list.where((e) => !e.isIncome).fold(0.0, (a, b) => a + b.amount);
 
-    if (nextVal) {
-      await scheduleDailyReminders();
-    } else {
-      await flutterLocalNotificationsPlugin.cancelAll();
-    }
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(nextVal ? tr('reminder_on') : tr('reminder_off')),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  void _showLanguageSheet() {
-    final langs = [
-      {'code': 'hi', 'name': 'हिन्दी (Hindi)'},
-      {'code': 'en', 'name': 'English'},
-      {'code': 'ur', 'name': 'اردو (Urdu)'},
-      {'code': 'mr', 'name': 'मराठी (Marathi)'},
-      {'code': 'gu', 'name': 'ગુજરાતી (Gujarati)'},
-      {'code': 'bn', 'name': 'বাংলা (Bengali)'},
-      {'code': 'ta', 'name': 'தமிழ் (Tamil)'},
-      {'code': 'te', 'name': 'తెలుగు (Telugu)'},
-    ];
-
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(tr('select_lang'),
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            ...langs.map((l) => ListTile(
-                  title: Text(l['name']!,
-                      style: const TextStyle(fontWeight: FontWeight.w600)),
-                  trailing: _lang == l['code']
-                      ? const Icon(Icons.check_circle, color: Color(0xFF0F766E))
-                      : null,
-                  onTap: () {
-                    _changeLang(l['code']!);
-                    Navigator.pop(ctx);
-                  },
-                )),
-          ],
-        ),
-      ),
-    );
+  List<Entry> get _filteredList {
+    if (_filter == 'Income') return _list.where((e) => e.isIncome).toList();
+    if (_filter == 'Expense') return _list.where((e) => !e.isIncome).toList();
+    return _list;
   }
 
   void _onExportPdfPressed() {
     if (_list.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(tr('no_data_pdf'))));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No entries available to export!')),
+      );
       return;
     }
 
@@ -526,7 +424,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _loadInterstitialAd();
           _generateAndSharePdf();
         },
-        onAdFailedToShowFullScreenContent: (ad, _) {
+        onAdFailedToShowFullScreenContent: (ad, err) {
           ad.dispose();
           _loadInterstitialAd();
           _generateAndSharePdf();
@@ -535,44 +433,39 @@ class _HomeScreenState extends State<HomeScreen> {
       _interstitialAd!.show();
       _interstitialAd = null;
     } else {
-      _loadInterstitialAd();
       _generateAndSharePdf();
+      _loadInterstitialAd();
     }
   }
 
   Future<void> _generateAndSharePdf() async {
     final pdf = pw.Document();
-    final font = await PdfGoogleFonts.notoSansDevanagariRegular();
-    final fontBold = await PdfGoogleFonts.notoSansDevanagariBold();
+    final dateStr = DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.now());
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        theme: pw.ThemeData.withFont(base: font, bold: fontBold),
-        build: (pw.Context context) {
-          return [
-            pw.Container(
-              padding: const pw.EdgeInsets.all(14),
-              decoration: pw.BoxDecoration(
-                color: PdfColor.fromHex('#0F766E'),
-                borderRadius: pw.BorderRadius.circular(8),
-              ),
-              child: pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text('Rz Kharch Diary - Statement',
-                      style: pw.TextStyle(
-                          color: PdfColors.white,
-                          fontSize: 18,
-                          fontWeight: pw.FontWeight.bold)),
-                  pw.Text(DateFormat('dd MMM yyyy').format(DateTime.now()),
-                      style: const pw.TextStyle(
-                          color: PdfColors.white, fontSize: 12)),
-                ],
-              ),
+        build: (pw.Context ctx) => [
+          pw.Header(
+            level: 0,
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('Rz Kharch Diary - Statement',
+                    style: pw.TextStyle(
+                        fontSize: 20, fontWeight: pw.FontWeight.bold)),
+                pw.Text(dateStr, style: const pw.TextStyle(fontSize: 10)),
+              ],
             ),
-            pw.SizedBox(height: 14),
-            pw.Row(
+          ),
+          pw.SizedBox(height: 10),
+          pw.Container(
+            padding: const pw.EdgeInsets.all(10),
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.grey400),
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+            ),
+            child: pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
               children: [
                 pw.Text('Total Income: Rs. ${_inc.toStringAsFixed(2)}',
@@ -587,29 +480,146 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
               ],
             ),
-            pw.SizedBox(height: 16),
-            pw.TableHelper.fromTextArray(
-              headerStyle: pw.TextStyle(
-                  fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-              headerDecoration:
-                  pw.BoxDecoration(color: PdfColor.fromHex('#0F766E')),
-              cellAlignment: pw.Alignment.centerLeft,
-              headers: ['Date', 'Title', 'Category', 'Mode', 'Type', 'Amount'],
-              data: _list.map((item) {
-                return [
-                  item['date'].toString(),
-                  item['title'].toString(),
-                  item['cat'].toString(),
-                  item['mode'].toString(),
-                  item['type'].toString(),
-                  'Rs. ${item['amount']}',
-                ];
-              }).toList(),
-            ),
-          ];
-        },
+          ),
+          pw.SizedBox(height: 16),
+          pw.TableHelper.fromTextArray(
+            headers: ['Date', 'Title', 'Category', 'Type', 'Amount (Rs.)'],
+            headerStyle: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+            headerDecoration:
+                const pw.BoxDecoration(color: PdfColors.teal800),
+            cellAlignment: pw.Alignment.centerLeft,
+            data: _list.map((e) {
+              return [
+                DateFormat('dd/MM/yyyy').format(e.date),
+                e.title,
+                e.category,
+                e.isIncome ? 'Income' : 'Expense',
+                '${e.isIncome ? '+' : '-'} ${e.amount.toStringAsFixed(2)}',
+              ];
+            }).toList(),
+          ),
+        ],
       ),
     );
 
+    final bytes = await pdf.save();
     await Printing.sharePdf(
-      bytes: await
+      bytes: bytes,
+      filename:
+          'Rz_Kharch_Diary_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
+    );
+  }
+
+  void _openLanguagePicker() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        children: appStrings.entries.map((entry) {
+          final code = entry.key;
+          final name = entry.value['lang_name']!;
+          return ListTile(
+            leading: Icon(
+              _lang == code ? Icons.radio_button_checked : Icons.radio_button_off,
+              color: const Color(0xFF0F766E),
+            ),
+            title: Text(name,
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+            onTap: () {
+              _changeLanguage(code);
+              Navigator.pop(context);
+            },
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  void _openForm({Entry? existing}) {
+    final titleCtrl = TextEditingController(text: existing?.title ?? '');
+    final amtCtrl = TextEditingController(
+        text: existing != null ? existing.amount.toStringAsFixed(0) : '');
+    bool isIncome = existing?.isIncome ?? false;
+    String selectedCat = existing?.category ?? 'General';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+            left: 20,
+            right: 20,
+            top: 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                existing == null ? t('add_entry') : t('edit_entry'),
+                style:
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: ChoiceChip(
+                      label: Center(child: Text(t('expense'))),
+                      selected: !isIncome,
+                      selectedColor: Colors.red.shade100,
+                      onSelected: (_) => setModalState(() => isIncome = false),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ChoiceChip(
+                      label: Center(child: Text(t('income'))),
+                      selected: isIncome,
+                      selectedColor: Colors.green.shade100,
+                      onSelected: (_) => setModalState(() => isIncome = true),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: titleCtrl,
+                decoration: InputDecoration(
+                  labelText: t('title_hint'),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: amtCtrl,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: t('amount_hint'),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _categories.contains(selectedCat)
+                    ? selectedCat
+                    : 'General',
+                decoration: InputDecoration(
+                  labelText: 'Category',
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                items
