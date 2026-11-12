@@ -1,4 +1,4 @@
-name: Build and Sign Kharch Diary
+name: Build and Sign Rz Kharch Diary
 
 on:
   workflow_dispatch:
@@ -32,12 +32,29 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Upgrade Project to Modern V2 Android Structure
+      - name: Upgrade Project to Modern V2 with New Package Name
         working-directory: ${{ steps.find_dir.outputs.dir }}
         run: |
-          flutter create --project-name expense_tracker --org com.rzapps .
+          rm -rf android
+          flutter create --project-name rz_kharch_diary --org com.rzapps .
 
-      - name: Generate Fresh Keystore and Upload Certificate
+      - name: Configure AndroidManifest for Ads, Notifications & App Name
+        working-directory: ${{ steps.find_dir.outputs.dir }}
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          sed -i 's/android:label="rz_kharch_diary"/android:label="Rz Kharch Diary"/g' "$MANIFEST"
+          sed -i 's/<manifest xmlns:android="http:\/\/schemas.android.com\/apk\/res\/android">/<manifest xmlns:android="http:\/\/schemas.android.com\/apk\/res\/android">\n    <uses-permission android:name="android.permission.INTERNET"\/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"\/>\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"\/>\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"\/>/g' "$MANIFEST"
+          sed -i 's/<\/application>/        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-8588358418138615~6548151535"\/>\n    <\/application>/g' "$MANIFEST"
+
+      - name: Generate App Icons
+        working-directory: ${{ steps.find_dir.outputs.dir }}
+        run: |
+          flutter pub get
+          if [ -f "ic_launcher.png" ]; then
+            dart run flutter_launcher_icons
+          fi
+
+      - name: Generate Fresh Keystore
         working-directory: ${{ steps.find_dir.outputs.dir }}
         run: |
           TARGET_DIR="android/app"
@@ -52,16 +69,6 @@ jobs:
             -keypass "KharchDiary@2026" \
             -dname "CN=Rz Apps, OU=Mobile, O=Rz Apps, L=Bijnor, ST=UP, C=IN"
 
-          keytool -export -rfc \
-            -keystore "$TARGET_DIR/upload-keystore.jks" \
-            -alias upload \
-            -storepass "KharchDiary@2026" \
-            -file upload_cert.pem
-
-      - name: Install Flutter Dependencies
-        working-directory: ${{ steps.find_dir.outputs.dir }}
-        run: flutter pub get
-
       - name: Build Android App Bundle (AAB)
         working-directory: ${{ steps.find_dir.outputs.dir }}
         run: flutter build appbundle --release --no-tree-shake-icons
@@ -69,12 +76,6 @@ jobs:
       - name: Upload Compliant AAB Bundle
         uses: actions/upload-artifact@v4
         with:
-          name: Kharch-Diary-Release-AAB
+          name: Rz-Kharch-Diary-AAB
           path: ${{ steps.find_dir.outputs.dir }}/build/app/outputs/bundle/release/app-release.aab
-
-      - name: Upload Play Console Certificate (.pem)
-        uses: actions/upload-artifact@v4
-        with:
-          name: Upload-Certificate-PEM
-          path: ${{ steps.find_dir.outputs.dir }}/upload_cert.pem
           
