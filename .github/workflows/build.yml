@@ -380,20 +380,91 @@ jobs:
             dart run flutter_launcher_icons
           fi
 
-      - name: Generate Fresh Keystore
+      - name: Setup Permanent Release Keystore & Signing
         working-directory: ${{ steps.find_dir.outputs.dir }}
         run: |
           TARGET_DIR="android/app"
           mkdir -p "$TARGET_DIR"
-          keytool -genkeypair \
-            -alias upload \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -keystore "$TARGET_DIR/upload-keystore.jks" \
-            -storepass "KharchDiary@2026" \
-            -keypass "KharchDiary@2026" \
-            -dname "CN=Rz Apps, OU=Mobile, O=Rz Apps, L=Bijnor, ST=UP, C=IN"
+
+          if [ -f "rz-release-keystore.jks" ]; then
+            cp rz-release-keystore.jks "$TARGET_DIR/upload-keystore.jks"
+          else
+            keytool -genkeypair \
+              -alias upload \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -keystore rz-release-keystore.jks \
+              -storepass "KharchDiary@2026" \
+              -keypass "KharchDiary@2026" \
+              -dname "CN=Rz Apps, OU=Mobile, O=Rz Apps, L=Bijnor, ST=UP, C=IN"
+            cp rz-release-keystore.jks "$TARGET_DIR/upload-keystore.jks"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add rz-release-keystore.jks
+            git commit -m "Save permanent release keystore" || true
+            git push || true
+          fi
+
+          cat << 'EOF' > android/key.properties
+          storePassword=KharchDiary@2026
+          keyPassword=KharchDiary@2026
+          keyAlias=upload
+          storeFile=upload-keystore.jks
+          EOF
+
+          if [ -f "android/app/build.gradle.kts" ]; then
+            cat << 'EOF' >> android/app/build.gradle.kts
+
+          import java.util.Properties
+          import java.io.FileInputStream
+          val keystoreProperties = Properties()
+          val keystorePropertiesFile = rootProject.file("key.properties")
+          if (keystorePropertiesFile.exists()) {
+              keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+          }
+          android {
+              signingConfigs {
+                  create("release") {
+                      keyAlias = keystoreProperties.getProperty("keyAlias")
+                      keyPassword = keystoreProperties.getProperty("keyPassword")
+                      storeFile = file(keystoreProperties.getProperty("storeFile"))
+                      storePassword = keystoreProperties.getProperty("storePassword")
+                  }
+              }
+              buildTypes {
+                  getByName("release") {
+                      signingConfig = signingConfigs.getByName("release")
+                  }
+              }
+          }
+          EOF
+          elif [ -f "android/app/build.gradle" ]; then
+            cat << 'EOF' >> android/app/build.gradle
+
+          def keystoreProperties = new Properties()
+          def keystorePropertiesFile = rootProject.file('key.properties')
+          if (keystorePropertiesFile.exists()) {
+              keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+          }
+          android {
+              signingConfigs {
+                  release {
+                      keyAlias keystoreProperties['keyAlias']
+                      keyPassword keystoreProperties['keyPassword']
+                      storeFile file(keystoreProperties['storeFile'])
+                      storePassword keystoreProperties['storePassword']
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                  }
+              }
+          }
+          EOF
+          fi
+
 
       - name: Build Android App Bundle (AAB)
         working-directory: ${{ steps.find_dir.outputs.dir }}
