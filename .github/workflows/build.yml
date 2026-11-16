@@ -369,8 +369,8 @@ jobs:
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           sed -i 's/android:label="rz_kharch_diary"/android:label="Rz Kharch Diary"/g' "$MANIFEST"
-          sed -i 's/<manifest xmlns:android="http:\/\/schemas.android.com\/apk\/res\/android">/<manifest xmlns:android="http:\/\/schemas.android.com\/apk\/res\/android">\n    <uses-permission android:name="android.permission.INTERNET"\/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"\/>\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"\/>\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"\/>/g' "$MANIFEST"
-          sed -i 's/<\/application>/        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-8588358418138615~6548151535"\/>\n    <\/application>/g' "$MANIFEST"
+          sed -i 's/<manifest xmlns:android="http:\/\/schemas.android.com\/apk\/res\/android">/<manifest xmlns:android="http:\/\/schemas.android.com\/apk\/res\/android" xmlns:tools="http:\/\/schemas.android.com\/tools">\n    <uses-permission android:name="android.permission.INTERNET"\/>\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"\/>\n    <uses-permission android:name="com.google.android.gms.permission.AD_ID"\/>/g' "$MANIFEST"
+          sed -i 's/<\/application>/        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-8588358418138615~8714606100"\/>\n    <\/application>/g' "$MANIFEST"
 
       - name: Generate App Icons
         working-directory: ${{ steps.find_dir.outputs.dir }}
@@ -380,7 +380,7 @@ jobs:
             dart run flutter_launcher_icons
           fi
 
-      - name: Setup Permanent Release Keystore & Signing
+      - name: Setup Permanent Release Keystore, Signing & SDK 24+
         working-directory: ${{ steps.find_dir.outputs.dir }}
         run: |
           TARGET_DIR="android/app"
@@ -414,6 +414,7 @@ jobs:
           EOF
 
           if [ -f "android/app/build.gradle.kts" ]; then
+            sed -i 's/minSdk = .*/minSdk = 24/g' android/app/build.gradle.kts
             cat << 'EOF' >> android/app/build.gradle.kts
 
           import java.util.Properties
@@ -424,6 +425,9 @@ jobs:
               keystoreProperties.load(FileInputStream(keystorePropertiesFile))
           }
           android {
+              defaultConfig {
+                  minSdk = 24
+              }
               signingConfigs {
                   create("release") {
                       keyAlias = keystoreProperties.getProperty("keyAlias")
@@ -440,6 +444,7 @@ jobs:
           }
           EOF
           elif [ -f "android/app/build.gradle" ]; then
+            sed -i 's/minSdkVersion .*/minSdkVersion 24/g' android/app/build.gradle
             cat << 'EOF' >> android/app/build.gradle
 
           def keystoreProperties = new Properties()
@@ -448,6 +453,9 @@ jobs:
               keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
           }
           android {
+              defaultConfig {
+                  minSdkVersion 24
+              }
               signingConfigs {
                   release {
                       keyAlias keystoreProperties['keyAlias']
@@ -464,13 +472,6 @@ jobs:
           }
           EOF
           fi
-      - name: Set minSdkVersion to 24
-        working-directory: ${{ steps.find_dir.outputs.dir }}
-        run: |
-          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 24/g' android/app/build.gradle.kts 2>/dev/null || true
-          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 24/g' android/app/build.gradle 2>/dev/null || true
-          
-
 
       - name: Build Android App Bundle (AAB)
         working-directory: ${{ steps.find_dir.outputs.dir }}
@@ -482,3 +483,4 @@ jobs:
           name: Rz-Kharch-Diary-AAB
           path: ${{ steps.find_dir.outputs.dir }}/build/app/outputs/bundle/release/app-release.aab
           
+              
