@@ -464,6 +464,12 @@ jobs:
           }
           EOF
           fi
+      - name: Set minSdkVersion to 24
+        working-directory: ${{ steps.find_dir.outputs.dir }}
+        run: |
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 24/g' android/app/build.gradle.kts 2>/dev/null || true
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 24/g' android/app/build.gradle 2>/dev/null || true
+          
 
 
       - name: Build Android App Bundle (AAB)
