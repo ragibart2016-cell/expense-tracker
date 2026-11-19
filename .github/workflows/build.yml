@@ -37,7 +37,14 @@ jobs:
         run: |
           rm -rf android
           flutter create --project-name rz_kharch_diary --org com.rzapps .
-
+      - name: Set Target and Compile SDK to 35
+        working-directory: ${{ steps.find_dir.outputs.dir }}
+        run: |
+          sed -i 's/compileSdk = .*/compileSdk = 35/g' android/app/build.gradle*
+          sed -i 's/targetSdk = .*/targetSdk = 35/g' android/app/build.gradle*
+          sed -i 's/compileSdkVersion .*/compileSdkVersion 35/g' android/app/build.gradle*
+          sed -i 's/targetSdkVersion .*/targetSdkVersion 35/g' android/app/build.gradle*
+          
       - name: Write Complete Clean main.dart
         working-directory: ${{ steps.find_dir.outputs.dir }}
         run: |
