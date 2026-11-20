@@ -1,7 +1,7 @@
 name: rz_kharch_diary
 description: "Rz Kharch Diary - Offline daily expense tracker with PDF export, multi-language support, and daily reminders"
 publish_to: 'none'
-version: 1.0.0+2
+version: 1.0.0+3
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
